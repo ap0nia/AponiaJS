@@ -50,7 +50,14 @@ export class GitHub<T = GitHubUser> implements Provider<T> {
     return [authorizationUrl, state] as const
   }
 
-  async getTokens(code: string) {
+  async getTokens(codeOrRequest: string | Request) {
+    const code = 
+      typeof codeOrRequest === 'string' 
+        ? codeOrRequest 
+        : new URLSearchParams(codeOrRequest.url).get('code')
+
+    if (!code) throw new Error('No code found')
+
     const tokenParams = new URLSearchParams({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -67,7 +74,7 @@ export class GitHub<T = GitHubUser> implements Provider<T> {
     return tokens
   }
 
-  async revokeToken(access_token: string) {
+  async logout(access_token: string) {
     const url = `https://api.github.com/applications/${this.config.clientId}/grant`
 
     const response = await fetch(url, {
@@ -96,5 +103,17 @@ export class GitHub<T = GitHubUser> implements Provider<T> {
     }
 
     return this.config.onAuth?.(user) ?? user as T
+  }
+
+  _authenticateRequestMethod = 'GET'
+
+  async authenticateRequest(request: Request) {
+    if (request.method !== this._authenticateRequestMethod) {
+      throw new Error(`Invalid request method: ${request.method}`)
+    }
+
+    const tokens = await this.getTokens(request)
+    const user = await this.getUser(tokens.access_token)
+    return user
   }
 }

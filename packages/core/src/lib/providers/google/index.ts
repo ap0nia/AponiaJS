@@ -60,7 +60,7 @@ export class Google<T = GoogleProfile> implements Provider<T> {
     return tokens
   }
   
-  async revokeToken(token: string) {
+  async logout(token: string) {
     const revokeParams = new URLSearchParams({ token })
 
     const url = `${GOOGLE_ENDPOINTS.revoke}?${revokeParams.toString()}`
@@ -77,5 +77,15 @@ export class Google<T = GoogleProfile> implements Provider<T> {
       .then(res => res.json())
 
     return this.config.onAuth?.(user) ?? user as T
+  }
+
+  _authenticateRequestMethod = 'GET'
+
+  async authenticateRequest(request: Request) {
+    if (request.method !== this._authenticateRequestMethod) {
+      throw new Error(`Invalid request method: ${request.method}`)
+    }
+
+    return this.getUser('')
   }
 }

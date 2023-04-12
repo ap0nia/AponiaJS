@@ -31,24 +31,27 @@ export type Provider<T> = {
   issuer?: string,
 
   /**
-   * 1. Redirect the user to the provider's authorization endpoint to start the OAuth flow.
+   * 1. Get the provider's authorization endpoint and state cookie to start the OAuth flow.
+   * If credentials provider or similar, use redirect status 307 to preserve the request.
    */
   getAuthorizationUrl: () => Readonly<[string, string]>
 
   /**
-   * 2. After authorizing and being redirected, exchange the authorization code for tokens.
-   */
-  getTokens: (code: string) => Promise<Tokens>
-
-  /**
-   * 3. Use the access token to get the user's profile.
-   */
-  getUser: (token: string) => Promise<T>
-
-  /**
    * The tokens can be stored and revoked later.
    */
-  revokeToken: (token: string) => Promise<boolean>
+  logout: (token: string) => Promise<boolean>
+
+  /**
+   * 1. Get the provider's authorization endpoint and state cookie to start the OAuth flow.
+   * 2. After authorizing and being redirected, exchange the authorization code for tokens.
+   * 3. Use the access token to get the user's profile.
+   */
+  authenticateRequest: (req: Request) => Promise<T>
+
+  /**
+   * Allowed method.
+   */
+  _authenticateRequestMethod: string
 }
 
 /**

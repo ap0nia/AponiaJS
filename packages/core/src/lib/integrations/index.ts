@@ -67,8 +67,9 @@ export class Integration<T extends Strategy = 'jwt'> {
       }
 
       case '/auth/callback': {
-        const tokens = await provider.getTokens(url.searchParams.get('code') ?? '')
-        const user = await provider.getUser(tokens.access_token)
+        if (provider._authenticateRequestMethod !== request.method) return
+
+        const user = await provider.authenticateRequest(request)
 
         if (this.usingJwt()) {
           const sessionToken = await this.config.sessionManager.createSessionToken(user)
