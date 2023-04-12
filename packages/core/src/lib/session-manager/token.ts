@@ -29,13 +29,9 @@ export class TokenSessionManager<T extends Token = Token> {
 
     const sessionUser = await decode<T>({ ...this.config, token })
 
-    if (sessionUser == null) throw new Error()
+    if (sessionUser == null) throw new Error('No session user')
 
-    const { session, user } = sessionUser
-
-    if (session.expires < new Date().getTime()) throw new Error()
-
-    return { session, user }
+    return sessionUser
   }
 
   async invalidateSession(request: Request) {

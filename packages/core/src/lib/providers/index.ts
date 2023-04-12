@@ -1,3 +1,5 @@
+export const STATE_COOKIE_NAME = 'aponia-state'
+
 /**
  * @see [RFC 6749 - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3)
  * @see [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication)

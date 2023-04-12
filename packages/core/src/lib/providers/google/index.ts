@@ -86,6 +86,14 @@ export class Google<T = GoogleProfile> implements Provider<T> {
       throw new Error(`Invalid request method: ${request.method}`)
     }
 
-    return this.getUser('')
+    const code = new URL(request.url).searchParams.get('code')
+
+    if (code == null) throw new Error('Invalid code')
+
+    const tokens = await this.getTokens(code)
+
+    const user = await this.getUser(tokens.access_token)
+
+    return user
   }
 }

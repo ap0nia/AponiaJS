@@ -1,37 +1,11 @@
 import { redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
-import type { Provider } from '../../providers'
-import type { TokenSessionManager } from '$lib/session-manager/token'
-import type { DatabaseSessionManager } from '$lib/session-manager/database'
 import { Integration } from '..'
-
-/**
- * `jwt`: Use a JWT token to store the user's session.
- * `database`: Store the user's session in a database.
- * `none`: Do not store the user's session.
- */
-type Strategy = 'jwt' | 'database' | 'none'
-
-export type SvelteKitConfig<T extends Strategy = 'none'> = {
-  callbackUrl?: string
-  providers: Provider<any>[]
-  strategy?: T
-} & (
-  T extends 'jwt' 
-  ? { sessionManager: TokenSessionManager } 
-  : T extends 'database' ? { sessionManager: DatabaseSessionManager } 
-  : object
-)
-
-const defaultConfig: Partial<SvelteKitConfig> = {
-  callbackUrl: '/auth/callback',
-  providers: [],
-  strategy: 'none',
-}
+import type { IntegrationConfig, Strategy } from '..'
 
 export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
-  constructor(config: SvelteKitConfig<T>) {
-    super({ ...defaultConfig, ...config } as any)
+  constructor(config: IntegrationConfig<T>) {
+    super(config as any)
   }
 
   validRedirect(status?: number): status is Parameters<typeof redirect>[0] {
