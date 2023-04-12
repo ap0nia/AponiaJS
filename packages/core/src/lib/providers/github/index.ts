@@ -1,7 +1,6 @@
 import * as oauth from 'oauth4webapi'
 import type { OAuthConfig, Provider } from '..'
-import type { MaybePromise } from '$app/forms'
-import type { GitHubEmail, GitHubUser } from './index.types'
+import type { GitHubEmail, GitHubUser } from './types'
 
 /**
  * https://docs.github.com/en/rest/overview/authenticating-to-the-rest-api?apiVersion=2022-11-28#using-basic-authentication
@@ -19,18 +18,14 @@ export const GITHUB_ENDPOINTS = {
   revoke: 'https://api.github.com/applications/{client_id}/token',
 } as const
 
-export interface GitHubOAuthConfig<T = GitHubUser> extends OAuthConfig {
-  onAuth?: (user: GitHubUser) => MaybePromise<T>
-}
-
 export class GitHub<T extends Record<string, any> = GitHubUser> implements Provider<T> {
   id = 'github'
 
   type: Provider<T>['type'] = 'oauth'
 
-  config: GitHubOAuthConfig<T>
+  config: OAuthConfig<T>
 
-  constructor(config: GitHubOAuthConfig<T>) {
+  constructor(config: OAuthConfig<T>) {
     this.config = config
   }
 
@@ -94,7 +89,7 @@ export class GitHub<T extends Record<string, any> = GitHubUser> implements Provi
       user.email = (emails.find((e) => e.primary) ?? emails[0]).email
     }
 
-    return (await this.config.onAuth?.(user) ?? user) as T
+    return (await this.config.onLogin?.(user) ?? user) as T
   }
 
   _authenticateRequestMethod = 'GET'

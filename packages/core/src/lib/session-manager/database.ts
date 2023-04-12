@@ -1,11 +1,32 @@
+import type { MaybePromise } from '$lib/utils/promise';
 import { getSessionToken } from '.'
 import { decode, encode } from '../jwt';
-import type { User, Session } from '.'
 import type { JwtConfig } from '../jwt';
 
-type MaybePromise<T> = T | Promise<T>;
+/**
+ * After a user logs in with an account, a session can be created to persist login.
+ */
+export interface Session {
+  /**
+   * Unique session identifier.
+   */
+  id: string;
 
-export type DatabaseSessionConfig<T = User> = {
+  /**
+   * Session owner.
+   */
+  user_id: string;
+
+  /**
+   * Session expiry date.
+   */
+  expires: number | bigint;
+}
+
+export type DatabaseSessionConfig<T extends Record<string, any> = {}> = {
+  /**
+   * JWT configuration.
+   */
   jwt: JwtConfig
 
   /**
@@ -32,7 +53,7 @@ export type DatabaseSessionConfig<T = User> = {
 /**
  * Database session interface.
  */
-export class DatabaseSessionManager<T = User> implements DatabaseSessionConfig<T> {
+export class DatabaseSessionManager<T extends Record<string, any> = {}> {
   jwt: JwtConfig
 
   getUser: (session: Session) => MaybePromise<T | null>

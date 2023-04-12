@@ -1,7 +1,6 @@
 import * as oauth from 'oauth4webapi'
 import type { OAuthConfig, Provider } from '..'
-import type { GoogleProfile } from './index.types'
-import type { MaybePromise } from '$app/forms'
+import type { GoogleProfile } from './types'
 
 export const GOOGLE_ENDPOINTS = {
   authorization: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -10,9 +9,8 @@ export const GOOGLE_ENDPOINTS = {
   revoke: 'https://oauth2.googleapis.com/revoke',
 } as const
 
-export interface GoogleOauthConfig<T> extends OAuthConfig {
+export interface GoogleOauthConfig<T extends Record<string, any> = {}> extends OAuthConfig<T> {
   redirect_uri: string
-  onAuth?: (user: GoogleProfile) => MaybePromise<T>
 }
 
 export class Google<T extends Record<string, any> = GoogleProfile> implements Provider<T> {
@@ -77,7 +75,7 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
     const user: GoogleProfile = await fetch(`${GOOGLE_ENDPOINTS.user}&${params.toString()}`)
       .then(res => res.json())
 
-    return (await this.config.onAuth?.(user) ?? user) as T
+    return (await this.config.onLogin?.(user) ?? user) as T
   }
 
   _authenticateRequestMethod = 'GET'
@@ -89,7 +87,9 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
 
     const code = new URL(request.url).searchParams.get('code')
 
-    if (code == null) throw new Error('No OAuth code found.')
+    if (code == null) {
+      throw new Error('No OAuth code found.')
+    }
 
     const tokens = await this.getTokens(code)
 

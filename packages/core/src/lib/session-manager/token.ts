@@ -1,18 +1,12 @@
 import { getSessionToken } from ".";
 import { encode, decode } from "../jwt";
-import type { User, Session } from '.'
-
-export interface Token extends Record<string, unknown> {
-  session: Session
-  user: User
-}
 
 export interface TokenSessionConfig {
   secret: string
   maxAge?: number
 }
 
-export class TokenSessionManager<T extends Token = Token> {
+export class TokenSessionManager<T extends Record<string, any> = {}> {
   config: TokenSessionConfig
 
   constructor(config: TokenSessionConfig) {

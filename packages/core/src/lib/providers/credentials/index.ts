@@ -1,20 +1,16 @@
-import type { MaybePromise } from '$app/forms'
-import type { Provider } from '..'
+import type { Provider, ProviderConfig } from '..'
 
-type User = {}
-
-export interface CredentialsConfig<TInput = User, TOutput = User> {
-  onAuth?: (user: TInput) => MaybePromise<TOutput>
-}
-
-export class Credentials<TInput = User, TOutput = User> implements Provider<TOutput> {
+/**
+ * `Credentials` provider, i.e. username + password.
+ */
+export class Credentials<T extends Record<string, any> = {}> implements Provider<T> {
   id = 'credentials'
 
-  type: Provider<TOutput>['type'] = 'credentials'
+  type: Provider<T>['type'] = 'credentials'
 
-  config: CredentialsConfig<TInput, TOutput>
+  config: ProviderConfig<T>
 
-  constructor(config: CredentialsConfig<TInput, TOutput>) {
+  constructor(config: ProviderConfig<T>) {
     this.config = config
   }
 
@@ -35,6 +31,6 @@ export class Credentials<TInput = User, TOutput = User> implements Provider<TOut
 
     const formData = await request.formData()
     const form: any = Object.fromEntries(formData.entries())
-    return this.config.onAuth?.(form) ?? form
+    return this.config.onLogin?.(form) ?? form
   }
 }

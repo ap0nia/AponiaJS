@@ -1,3 +1,5 @@
+import type { MaybePromise } from "$lib/utils/promise"
+
 export const STATE_COOKIE_NAME = 'aponia-state'
 
 /**
@@ -7,11 +9,6 @@ export const STATE_COOKIE_NAME = 'aponia-state'
  * @see [Credentials-based Authentication](https://authjs.dev/concepts/credentials)
  */
 export type ProviderType = "oidc" | "oauth" | "email" | "credentials"
-
-export type Tokens = {
-  access_token: string
-  refresh_token?: string
-}
 
 /**
  * @see [RFC 6749 - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3)
@@ -57,9 +54,17 @@ export type Provider<T> = {
 }
 
 /**
- * Default configuration for the providers.
+ * Base provider configuration.
  */
-export type OAuthConfig = {
+export interface ProviderConfig<T extends Record<string, any> = {}> {
+  onLogin?: (user: any) => MaybePromise<T>
+  onLogout?: (user: any) => MaybePromise<void>
+}
+
+/**
+ * Base configuration for OAuth providers.
+ */
+export interface OAuthConfig<T extends Record<string, any> = {}> extends ProviderConfig<T> {
   clientId: string;
   clientSecret: string;
   scope?: string[];

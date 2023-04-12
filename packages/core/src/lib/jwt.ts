@@ -44,7 +44,7 @@ export interface JWTDecodeParams {
 /**
  * Issues a JWT, encrypted using "A256GCM" by default.
  */
-export async function encode<T extends Record<string, unknown> = {}>(params: JWTEncodeParams<T>) {
+export async function encode<T extends Record<string, any> = {}>(params: JWTEncodeParams<T>) {
   const { token = {}, secret, maxAge = DEFAULT_MAX_AGE } = params;
 
   const encryptionSecret = await getDerivedEncryptionKey(secret);
