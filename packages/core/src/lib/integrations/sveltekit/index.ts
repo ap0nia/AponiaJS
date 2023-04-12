@@ -12,22 +12,25 @@ import { Integration } from '..'
  */
 type Strategy = 'jwt' | 'database' | 'none'
 
-export type SvelteKitConfig<T extends Strategy = 'jwt'> = {
-  callbackUrl: string
+export type SvelteKitConfig<T extends Strategy = 'none'> = {
+  callbackUrl?: string
   providers: Provider<any>[]
-  strategy: T
-  sessionManager: T extends 'jwt' ? TokenSessionManager : DatabaseSessionManager
-}
+  strategy?: T
+} & (
+  T extends 'jwt' 
+  ? { sessionManager: TokenSessionManager } 
+  : T extends 'database' ? { sessionManager: DatabaseSessionManager } 
+  : object
+)
 
-const defaultConfig: SvelteKitConfig = {
+const defaultConfig: Partial<SvelteKitConfig> = {
   callbackUrl: '/auth/callback',
   providers: [],
-  strategy: 'jwt',
-  sessionManager: Object.create(null),
+  strategy: 'none',
 }
 
-export class SvelteKit<T extends Strategy = 'jwt'> extends Integration<T> {
-  constructor(config: Partial<SvelteKitConfig<T>> = {}) {
+export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
+  constructor(config: SvelteKitConfig<T>) {
     super({ ...defaultConfig, ...config } as any)
   }
 
