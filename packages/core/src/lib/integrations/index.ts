@@ -11,7 +11,7 @@ import { SESSION_COOKIE_NAME } from '$lib/session-manager'
  */
 export type Strategy = 'jwt' | 'database' | 'none'
 
-export type IntegrationConfig<T extends Strategy = 'jwt'> = {
+export type IntegrationConfig<T extends Strategy = 'none'> = {
   callbackUrl: string
   providers: Provider<any>[]
   strategy?: T
@@ -25,11 +25,9 @@ export type IntegrationConfig<T extends Strategy = 'jwt'> = {
 const defaultConfig: IntegrationConfig = {
   callbackUrl: '/auth/callback',
   providers: [],
-  strategy: 'jwt',
-  sessionManager: Object.create(null),
 }
 
-export class Integration<T extends Strategy = 'jwt'> {
+export class Integration<T extends Strategy = 'none'> {
   config: IntegrationConfig<T>
 
   callbacks: Map<string, Provider<any>>

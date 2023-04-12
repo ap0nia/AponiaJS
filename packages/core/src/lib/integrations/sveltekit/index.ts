@@ -3,13 +3,14 @@ import type { Handle } from '@sveltejs/kit'
 import { Integration } from '..'
 import type { IntegrationConfig, Strategy } from '..'
 
+const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
+  status != null && status >= 300 && status < 400
+
+
+
 export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
   constructor(config: IntegrationConfig<T>) {
     super(config as any)
-  }
-
-  validRedirect(status?: number): status is Parameters<typeof redirect>[0] {
-    return status != null && status >= 300 && status < 400
   }
 
   handle: Handle = async ({ event, resolve }) => {
@@ -33,7 +34,7 @@ export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
       )
     }
 
-    if (internalResponse.redirect != null && this.validRedirect(internalResponse.status)) {
+    if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
       throw redirect(internalResponse.status, internalResponse.redirect)
     }
 
