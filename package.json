@@ -1,0 +1,7 @@
+{
+  "name": "AponiaJS",
+  "devDependencies": {
+    "prettier": "^2.8.7",
+    "typescript": "^5.0.4"
+  }
+}
