@@ -1,12 +1,12 @@
-import { Google } from './providers/google'
-import { Github } from './providers/github'
-import { SvelteKit } from './integrations/sveltekit'
+import { Google } from '$lib/providers/google'
+import { GitHub } from '$lib/providers/github'
+import { SvelteKit } from '$lib/integrations/sveltekit'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
 
 const svelteKitter = new SvelteKit({
   callbackUrl: '/auth/callback',
   providers: [
-    new Github({
+    new GitHub({
       clientId: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
     }),

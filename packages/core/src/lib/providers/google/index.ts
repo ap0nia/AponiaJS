@@ -1,5 +1,6 @@
 import * as oauth from 'oauth4webapi'
-import type { OAuthConfig, ProviderConfig } from '.'
+import type { OAuthConfig, Provider } from '..'
+import type { GoogleProfile } from './index.types'
 
 export const GOOGLE_ENDPOINTS = {
   authorization: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -8,16 +9,19 @@ export const GOOGLE_ENDPOINTS = {
   revoke: 'https://oauth2.googleapis.com/revoke',
 } as const
 
-export interface GoogleConfig extends OAuthConfig {
+export interface GoogleOauthConfig<T> extends OAuthConfig {
   redirect_uri: string
+  onAuth?: (user: GoogleProfile) => Promise<T>
 }
 
-export class Google implements ProviderConfig<GoogleProfile> {
+export class Google<T = GoogleProfile> implements Provider<T> {
   id = 'google'
-  type: ProviderConfig<GoogleProfile>['type'] = 'oidc'
-  config: GoogleConfig
 
-  constructor(config: GoogleConfig) {
+  type: Provider<T>['type'] = 'oidc'
+
+  config: GoogleOauthConfig<T>
+
+  constructor(config: GoogleOauthConfig<T>) {
     this.config = config
   }
 
@@ -68,27 +72,10 @@ export class Google implements ProviderConfig<GoogleProfile> {
 
   async getUser(access_token: string) {
     const params = new URLSearchParams({ access_token })
+
     const user: GoogleProfile = await fetch(`${GOOGLE_ENDPOINTS.user}&${params.toString()}`)
       .then(res => res.json())
 
-    return user
+    return this.config.onAuth?.(user) ?? user as T
   }
-}
-
-export interface GoogleProfile extends Record<string, any> {
-  aud: string
-  azp: string
-  email: string
-  email_verified: boolean
-  exp: number
-  family_name: string
-  given_name: string
-  hd: string
-  iat: number
-  iss: string
-  jti: string
-  name: string
-  nbf: number
-  picture: string
-  sub: string
 }

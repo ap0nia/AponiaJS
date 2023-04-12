@@ -14,7 +14,7 @@ export type Tokens = {
 /**
  * @see [RFC 6749 - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3)
  */
-export type ProviderConfig<User> = {
+export type Provider<T> = {
   /**
    * An identifier for this provider.
    */
@@ -43,7 +43,7 @@ export type ProviderConfig<User> = {
   /**
    * 3. Use the access token to get the user's profile.
    */
-  getUser: (token: string) => Promise<User>
+  getUser: (token: string) => Promise<T>
 
   /**
    * The tokens can be stored and revoked later.

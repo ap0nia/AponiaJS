@@ -1,6 +1,0 @@
-{
-  "name": "@aponia/integrations",
-  "devDependencies": {
-    "@sveltejs/kit": "^1.15.4"
-  }
-}

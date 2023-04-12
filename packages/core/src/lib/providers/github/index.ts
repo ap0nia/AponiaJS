@@ -1,5 +1,7 @@
 import * as oauth from 'oauth4webapi'
-import type { OAuthConfig, ProviderConfig } from '.'
+import type { OAuthConfig, Provider } from '..'
+import type { MaybePromise } from '$app/forms'
+import type { GitHubEmail, GitHubUser } from './index.types'
 
 /**
  * https://docs.github.com/en/rest/overview/authenticating-to-the-rest-api?apiVersion=2022-11-28#using-basic-authentication
@@ -18,13 +20,18 @@ export const GITHUB_ENDPOINTS = {
   revoke: 'https://api.github.com/applications/{client_id}/token',
 } as const
 
+export interface GitHubOAuthConfig<T = GitHubUser> extends OAuthConfig {
+  onAuth?: (user: GitHubUser) => MaybePromise<T>
+}
 
-export class Github implements ProviderConfig<GitHubUser> {
+export class GitHub<T = GitHubUser> implements Provider<T> {
   id = 'github'
-  type: ProviderConfig<GitHubUser>['type'] = 'oauth'
-  config: OAuthConfig
 
-  constructor(config: OAuthConfig) {
+  type: Provider<T>['type'] = 'oauth'
+
+  config: GitHubOAuthConfig<T>
+
+  constructor(config: GitHubOAuthConfig<T>) {
     this.config = config
   }
 
@@ -88,64 +95,6 @@ export class Github implements ProviderConfig<GitHubUser> {
       user.email = (emails.find((e) => e.primary) ?? emails[0]).email
     }
 
-    return user
-  }
-}
-
-export interface GitHubEmail {
-  email: string
-  primary: boolean
-  verified: boolean
-  visibility: "public" | "private"
-}
-
-/** 
- * @see [Get the authenticated user](https://docs.github.com/en/rest/users/users#get-the-authenticated-user)
- */
-export interface GitHubUser {
-  login: string
-  id: number
-  node_id: string
-  avatar_url: string
-  gravatar_id: string | null
-  url: string
-  html_url: string
-  followers_url: string
-  following_url: string
-  gists_url: string
-  starred_url: string
-  subscriptions_url: string
-  organizations_url: string
-  repos_url: string
-  events_url: string
-  received_events_url: string
-  type: string
-  site_admin: boolean
-  name: string | null
-  company: string | null
-  blog: string | null
-  location: string | null
-  email: string | null
-  hireable: boolean | null
-  bio: string | null
-  twitter_username?: string | null
-  public_repos: number
-  public_gists: number
-  followers: number
-  following: number
-  created_at: string
-  updated_at: string
-  private_gists?: number
-  total_private_repos?: number
-  owned_private_repos?: number
-  disk_usage?: number
-  suspended_at?: string | null
-  collaborators?: number
-  two_factor_authentication: boolean
-  plan?: {
-    collaborators: number
-    name: string
-    space: number
-    private_repos: number
+    return this.config.onAuth?.(user) ?? user as T
   }
 }
