@@ -51,17 +51,20 @@ export class Integration<T extends Strategy = 'jwt'> {
   async handleInternal(request: Request): Promise<InternalResponse | void> {
     const url = new URL(request.url)
 
-    const providerId = url.pathname.split('/').pop() ?? ''
+    const pathname = url.pathname.split('/')
+
+    const providerId = pathname.pop() ?? ''
 
     const provider = this.callbacks.get(providerId)
 
     if (!provider) return
 
-    switch (url.pathname) {
+    switch (pathname.join('/')) {
       case '/auth/login': {
         const [url, state] = provider.getAuthorizationUrl()
         return {
           redirect: url,
+          status: 307,
           cookies: [{ value: state, name: 'state' }]
         }
       }
@@ -74,7 +77,9 @@ export class Integration<T extends Strategy = 'jwt'> {
         if (this.usingJwt()) {
           const sessionToken = await this.config.sessionManager.createSessionToken(user)
           return {
-            cookies: [{ value: sessionToken, name: 'session' }]
+            redirect: '/',
+            status: 302,
+            cookies: [{ value: sessionToken, name: 'session' }],
           }
         } 
 
@@ -82,7 +87,7 @@ export class Integration<T extends Strategy = 'jwt'> {
           return
         }
 
-        return
+        return { redirect: '/', status: 302 }
       }
 
       case '/auth/logout': {

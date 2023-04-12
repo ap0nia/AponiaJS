@@ -45,10 +45,6 @@ export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
       return await resolve(event)
     }
 
-    if (internalResponse.redirect != null && this.validRedirect(internalResponse.status)) {
-      throw redirect(internalResponse.status, internalResponse.redirect)
-    }
-
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
         event.cookies.set(cookie.name, cookie.value, cookie.options)
@@ -61,6 +57,10 @@ export class SvelteKit<T extends Strategy = 'none'> extends Integration<T> {
         ? Object.fromEntries(internalResponse.headers.entries())
         : Object.fromEntries(Object.entries(internalResponse.headers))
       )
+    }
+
+    if (internalResponse.redirect != null && this.validRedirect(internalResponse.status)) {
+      throw redirect(internalResponse.status, internalResponse.redirect)
     }
 
     return await resolve(event)

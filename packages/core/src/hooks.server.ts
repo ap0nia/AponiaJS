@@ -18,6 +18,4 @@ const svelteKitter = new SvelteKit({
   ]
 })
 
-export let x = svelteKitter
-
 export const { handle } = svelteKitter
