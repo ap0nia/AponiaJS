@@ -15,7 +15,7 @@ const svelteKitter = new SvelteKit({
     new Google({
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      redirect_uri: 'http://localhost:5173/auth/callback/google'
+      redirect_uri: 'http://localhost:5173/auth/callback/google',
     })
   ],
   sessionManager: new TokenSessionManager({ secret: 'secret' })

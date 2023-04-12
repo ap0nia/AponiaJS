@@ -55,7 +55,7 @@ export class DatabaseSessionManager<T = User> implements DatabaseSessionConfig<T
   async createSessionToken(userId: string) {
     const session = await this.createSession(userId)
 
-    if (session == null) throw new Error()
+    if (session == null) return null
 
     const token = await encode({ ...this.jwt, token: session })
 
@@ -63,11 +63,13 @@ export class DatabaseSessionManager<T = User> implements DatabaseSessionConfig<T
   }
 
   async getRequestSession(request: Request) {
-    const sessionToken = getSessionToken(request)
+    const token = getSessionToken(request)
 
-    const session = await decode<Session>({ ...this.jwt, token: sessionToken })
+    if (token == null) return null
 
-    if (session == null) throw new Error()
+    const session = await decode<Session>({ ...this.jwt, token })
+
+    if (session == null) return null
 
     const user = await this.getUser(session)
 

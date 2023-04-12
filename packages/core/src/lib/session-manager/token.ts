@@ -27,11 +27,11 @@ export class TokenSessionManager<T extends Token = Token> {
   async getRequestSession(request: Request) {
     const token = getSessionToken(request)
 
-    const sessionUser = await decode<T>({ ...this.config, token })
+    if (token == null) return null
 
-    if (sessionUser == null) throw new Error('No session user')
+    const session = await decode<T>({ ...this.config, token })
 
-    return sessionUser
+    return session
   }
 
   async invalidateSession(request: Request) {

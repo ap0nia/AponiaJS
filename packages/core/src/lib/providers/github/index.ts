@@ -11,7 +11,6 @@ export function generateBasicAuthHeader(clientId: string, clientSecret: string) 
   return `Basic ${encodedCredentials}`
 }
 
-
 export const GITHUB_ENDPOINTS = {
   authorization: 'https://github.com/login/oauth/authorize',
   access_token: 'https://github.com/login/oauth/access_token',
@@ -24,7 +23,7 @@ export interface GitHubOAuthConfig<T = GitHubUser> extends OAuthConfig {
   onAuth?: (user: GitHubUser) => MaybePromise<T>
 }
 
-export class GitHub<T = GitHubUser> implements Provider<T> {
+export class GitHub<T extends Record<string, any> = GitHubUser> implements Provider<T> {
   id = 'github'
 
   type: Provider<T>['type'] = 'oauth'
@@ -95,7 +94,7 @@ export class GitHub<T = GitHubUser> implements Provider<T> {
       user.email = (emails.find((e) => e.primary) ?? emails[0]).email
     }
 
-    return this.config.onAuth?.(user) ?? user as T
+    return (await this.config.onAuth?.(user) ?? user) as T
   }
 
   _authenticateRequestMethod = 'GET'
@@ -107,7 +106,7 @@ export class GitHub<T = GitHubUser> implements Provider<T> {
 
     const code = new URL(request.url).searchParams.get('code')
 
-    if (code == null) throw new Error('Invalid code')
+    if (code == null) throw new Error('No OAuth code found.')
 
     const tokens = await this.getTokens(code)
 

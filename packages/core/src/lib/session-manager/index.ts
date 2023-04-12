@@ -11,9 +11,7 @@ export function getSessionToken(request: Request) {
 
   const sessionId = cookies[SESSION_COOKIE_NAME]
 
-  if (sessionId == null) throw new Error('No session cookie found.')
-
-  return sessionId
+  return sessionId || null
 }
 
 

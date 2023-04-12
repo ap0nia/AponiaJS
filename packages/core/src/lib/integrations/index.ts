@@ -113,7 +113,7 @@ export class Integration<T extends Strategy = 'jwt'> {
             return {
               redirect: '/',
               status: 302,
-              cookies: [{ value: sessionToken, name: SESSION_COOKIE_NAME, options: { path: '/' } }],
+              cookies: [{ value: sessionToken ?? '', name: SESSION_COOKIE_NAME, options: { path: '/' } }],
             }
           }
 
@@ -129,6 +129,8 @@ export class Integration<T extends Strategy = 'jwt'> {
           return
         }
       }
-    } catch {}
+    } catch (e) {
+      console.error('error: ', e)
+    }
   }
 }
