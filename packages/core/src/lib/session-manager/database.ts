@@ -1,71 +1,52 @@
 import type { MaybePromise } from '$lib/utils/promise';
-import { getSessionToken } from '.'
-import { decode, encode } from '../jwt';
-import type { JwtConfig } from '../jwt';
+import { SessionManager, getSessionToken } from '.'
+import type { Session } from '.'
+import type { SessionManagerConfig } from '.'
 
-/**
- * After a user logs in with an account, a session can be created to persist login.
- */
-export interface Session {
+export interface DatabaseSessionConfig<TUser, TSession> extends SessionManagerConfig {
   /**
-   * Unique session identifier.
+   * Get the user from the database based on the session, i.e. retrieved from cookies.
    */
-  id: string;
+  getUser: (session: TSession) => MaybePromise<TUser | null>
 
   /**
-   * Session owner.
+   * Create a session from a user ID, i.e. storing it in the database.
+   * Session can then be used to create a session token.
    */
-  user_id: string;
+  createSession: (userId: string) => MaybePromise<TSession>
 
   /**
-   * Session expiry date.
-   */
-  expires: number | bigint;
-}
-
-export type DatabaseSessionConfig<T extends Record<string, any> = {}> = {
-  /**
-   * JWT configuration.
-   */
-  jwt: JwtConfig
-
-  /**
-   * Get a user from a session.
-   */
-  getUser: (session: Session) => MaybePromise<T | null>
-
-  /**
-   * Create a session for a user.
-   */
-  createSession: (userId: string) => MaybePromise<Session>
-
-  /**
-   * Invalidate a session.
+   * Invalidate a session, i.e. log the user out of a specific session.
    */
   invalidateSession: (sessionId: string) => MaybePromise<void>
 
   /**
-   * Invalidate all sessions for a user.
+   * Invalidate user's sessions, i.e. log the user out of all sessions.
    */
   invalidateUserSessions: (userId: string) => MaybePromise<void>
 }
 
 /**
  * Database session interface.
+ *
+ * Example flow:
+ * 1. User logs in. Handle auth yourself.
+ * 2. Call `createSession` to create a session in the database and return the session.
+ * 3. Call `createSessionToken` to create a session token from the session.
+ * 4. Store the session token in a cookie.
+ * 5. On subsequent requests, call `getRequestSession` to get the session from the request cookies.
  */
-export class DatabaseSessionManager<T extends Record<string, any> = {}> {
-  jwt: JwtConfig
+export class DatabaseSessionManager<TUser = {}, TSession extends Record<string, any> = Session> extends SessionManager<TSession> {
+  getUser: (session: TSession) => MaybePromise<TUser | null>
 
-  getUser: (session: Session) => MaybePromise<T | null>
-
-  createSession: (userId: string) => MaybePromise<Session>
+  createSession: (userId: string) => MaybePromise<TSession>
 
   invalidateSession: (sessionId: string) => MaybePromise<void>
 
   invalidateUserSessions: (userId: string) => MaybePromise<void>
 
-  constructor(config: DatabaseSessionConfig<T>) {
-    this.jwt = config.jwt
+  constructor(config: DatabaseSessionConfig<TUser, TSession>) {
+    super(config)
 
     this.getUser = config.getUser
     this.createSession = config.createSession
@@ -73,22 +54,12 @@ export class DatabaseSessionManager<T extends Record<string, any> = {}> {
     this.invalidateUserSessions = config.invalidateUserSessions
   }
 
-  async createSessionToken(userId: string) {
-    const session = await this.createSession(userId)
-
-    if (session == null) return null
-
-    const token = await encode({ ...this.jwt, token: session })
-
-    return token
-  }
-
   async getRequestSession(request: Request) {
     const token = getSessionToken(request)
 
     if (token == null) return null
 
-    const session = await decode<Session>({ ...this.jwt, token })
+    const session = await this.decode<TSession>({ ...this.jwt, token })
 
     if (session == null) return null
 
