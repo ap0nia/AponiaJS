@@ -66,6 +66,8 @@ export abstract class SessionManager<
     this.decode = config.jwt?.decode ?? decode
   }
 
+  abstract getRequestSession(request: Request): MaybePromise<RequestSession>
+
   async createSessionToken(session: TSession) {
     const token = await this.encode({ ...this.jwt, token: session })
     return token
@@ -84,6 +86,4 @@ export abstract class SessionManager<
   invalidateUserSessions(_userId: string): MaybePromise<void> {
     console.log(`InvalidateUserSessions. Not implemented`)
   }
-
-  abstract getRequestSession(request: Request): MaybePromise<RequestSession>
 }
