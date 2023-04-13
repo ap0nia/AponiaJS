@@ -1,6 +1,10 @@
 import { SessionManager } from ".";
 import type { SessionManagerConfig } from ".";
 
+export interface TokenSessionConfig<TUser, TSession> extends SessionManagerConfig {
+  getUserFromSession?: (session: TSession) => TUser | null
+}
+
 /**
  * Token session interface.
  *
@@ -15,8 +19,13 @@ export class TokenSessionManager<
   TUser = {},
   TSession extends Record<string, any> = {}
 > extends SessionManager<TUser, TSession> {
-  constructor(config: SessionManagerConfig) {
+
+  getUserFromSession?: (session: TSession) => TUser | null
+
+  constructor(config: TokenSessionConfig<TUser, TSession>) {
     super(config)
+
+    this.getUserFromSession = config.getUserFromSession
   }
 
   async getRequestSession(request: Request) {
@@ -26,6 +35,10 @@ export class TokenSessionManager<
 
     const session = await this.decode<TSession>({ ...this.jwt, token })
 
-    return { session, user: null }
+    if (session == null) return null
+
+    const user = this.getUserFromSession?.(session) ?? null
+
+    return { session, user }
   }
 }

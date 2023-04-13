@@ -7,7 +7,7 @@ export interface DatabaseSessionConfig<TUser, TSession> extends SessionManagerCo
   /**
    * Get the user from the database based on the session, i.e. retrieved from cookies.
    */
-  getUser: (session: TSession) => MaybePromise<TUser | null>
+  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
 
   /**
    * Create a session from a user ID, i.e. storing it in the database.
@@ -40,7 +40,7 @@ export class DatabaseSessionManager<
   TUser = {}, 
   TSession extends Record<string, any> = Session,
 > extends SessionManager<TUser, TSession> {
-  getUser: (session: TSession) => MaybePromise<TUser | null>
+  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
 
   createSession: (userId: string) => MaybePromise<TSession>
 
@@ -51,7 +51,7 @@ export class DatabaseSessionManager<
   constructor(config: DatabaseSessionConfig<TUser, TSession>) {
     super(config)
 
-    this.getUser = config.getUser
+    this.getUserFromSession = config.getUserFromSession
     this.createSession = config.createSession
     this.invalidateSession = config.invalidateSession
     this.invalidateUserSessions = config.invalidateUserSessions
@@ -66,7 +66,7 @@ export class DatabaseSessionManager<
 
     if (session == null) return null
 
-    const user = await this.getUser(session)
+    const user = await this.getUserFromSession?.(session) ?? null
 
     return { session, user }
   }

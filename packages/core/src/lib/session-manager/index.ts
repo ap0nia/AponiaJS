@@ -66,6 +66,8 @@ export abstract class SessionManager<
     this.decode = config.jwt?.decode ?? decode
   }
 
+  abstract getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
+
   abstract getRequestSession(request: Request): MaybePromise<RequestSession>
 
   async createSessionToken(session: TSession) {
