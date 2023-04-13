@@ -3,17 +3,21 @@ import { encode, decode } from '$lib/jwt'
 import type { JwtConfig, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
 import type { MaybePromise } from '$lib/utils/promise'
 
-export const SESSION_COOKIE_NAME = 'sid'
+export const ACCESS_TOKEN_COOKIE_NAME = 'aponia-access'
+
+export const REFRESH_TOKEN_COOKIE_NAME = 'aponia-refresh'
 
 /**
  * Get session token from request cookies.
  */
-export function getSessionToken(request: Request) {
+export function getTokens(request: Request) {
   const cookies = parse(request.headers.get('cookie') ?? '')
 
-  const sessionToken = cookies[SESSION_COOKIE_NAME]
+  const access_token = cookies[ACCESS_TOKEN_COOKIE_NAME] ?? null
 
-  return sessionToken ?? null
+  const refresh_token = cookies[REFRESH_TOKEN_COOKIE_NAME] ?? null
+
+  return { access_token, refresh_token }
 }
 
 /**
@@ -73,7 +77,7 @@ export interface SessionManagerConfig<TUser, TSession> {
  * 5. On subsequent requests, call `getRequestSession` to get the session from the request cookies.
  */
 export class SessionManager<TUser = {}, TSession extends Record<string, any> = Session> {
-  public static getSessionToken = getSessionToken
+  public static getSessionToken = getTokens
 
   /**
    * JWT configuration.
@@ -120,11 +124,11 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   }
 
   async getRequestSession(request: Request) {
-    const token = SessionManager.getSessionToken(request)
+    const { access_token } = SessionManager.getSessionToken(request)
 
-    if (token == null) return null
+    if (access_token == null) return null
 
-    const session = await this.decode<TSession>({ ...this.jwt, token })
+    const session = await this.decode<TSession>({ ...this.jwt, token: access_token })
 
     if (session == null) return null
 

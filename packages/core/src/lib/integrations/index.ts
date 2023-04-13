@@ -1,8 +1,9 @@
-import { STATE_COOKIE_NAME, type Provider } from '$lib/providers'
-import type { TokenSessionManager } from '$lib/session-manager/token'
+import { ACCESS_TOKEN_COOKIE_NAME } from '$lib/session-manager'
+import { STATE_COOKIE_NAME } from '$lib/providers'
+import type { Provider } from '$lib/providers'
+import type { SessionManager } from '$lib/session-manager'
 import type { DatabaseSessionManager } from '$lib/session-manager/database'
 import type { InternalResponse } from './response'
-import { SESSION_COOKIE_NAME } from '$lib/session-manager'
 
 /**
  * `jwt`: Use a JWT token to store the user's session.
@@ -17,7 +18,7 @@ export type IntegrationConfig<T extends Strategy = 'none'> = {
   strategy?: T
 } & (
   T extends 'jwt' 
-  ? { sessionManager: TokenSessionManager } 
+  ? { sessionManager: SessionManager } 
   : T extends 'database' ? { sessionManager: DatabaseSessionManager } 
   : object
 )
@@ -43,12 +44,8 @@ export class Integration<T extends Strategy = 'none'> {
     }, this.callbacks)
   }
 
-  usingJwt(): this is Integration<'jwt'> {
-    return this.config.strategy === 'jwt'
-  }
-
-  usingDatabase(): this is Integration<'database'> {
-    return this.config.strategy === 'database'
+  using<T extends Strategy>(strategy: T): this is Integration<T> {
+    return (this.config.strategy ?? '')  as any === strategy
   }
 
   async handleInternal(request: Request): Promise<InternalResponse | void> {
@@ -59,16 +56,9 @@ export class Integration<T extends Strategy = 'none'> {
     try {
       switch (pathname) {
         case '/auth/session': {
-          if (this.usingJwt()) {
-          console.log(' jwt session ')
-            const session = await this.config.sessionManager.getRequestSession(request)
-            console.log(' session ', session)
-          }
-
-          if (this.usingDatabase()) {
-            const session = await this.config.sessionManager.getRequestSession(request)
-            console.log(' session ', session)
-          }
+          if (!(this.using('jwt') || this.using('database'))) break
+          const session = await this.config.sessionManager.getRequestSession(request)
+          console.log({ session })
         }
       }
     } catch {}
@@ -84,7 +74,7 @@ export class Integration<T extends Strategy = 'none'> {
     try {
       switch (splitPath.join('/')) {
         case '/auth/login': {
-          const [url, state] = provider.login()
+          const [url, state] = provider.handleLogin(request)
           return {
             redirect: url,
             status: 307,
@@ -93,37 +83,22 @@ export class Integration<T extends Strategy = 'none'> {
         }
 
         case '/auth/callback': {
-          if (provider._authenticateRequestMethod !== request.method) return
+          const user = await provider.handleLogin(request)
 
-          const user = await provider.authenticateRequest(request)
-
-          if (this.usingJwt()) {
-            const sessionToken = await this.config.sessionManager.createSessionToken(user)
-            return {
-              redirect: '/',
-              status: 302,
-              cookies: [{ value: sessionToken, name: SESSION_COOKIE_NAME, options: { path: '/' } }],
-            }
-          } 
-
-          if (this.usingDatabase()) {
-            const sessionToken = await this.config.sessionManager.createSessionToken(user)
-            return {
-              redirect: '/',
-              status: 302,
-              cookies: [{ value: sessionToken ?? '', name: SESSION_COOKIE_NAME, options: { path: '/' } }],
-            }
+          if (!(this.using('jwt') || this.using('database'))) {
+            return { redirect: '/', status: 302 }
           }
 
-          return { redirect: '/', status: 302 }
+          const sessionToken = await this.config.sessionManager.createSessionToken(user)
+
+          return {
+            redirect: '/',
+            status: 302,
+            cookies: [{ value: sessionToken, name: ACCESS_TOKEN_COOKIE_NAME, options: { path: '/' } }],
+          }
         }
 
         case '/auth/logout': {
-          if (this.usingJwt()) {
-          }
-
-          if (this.usingDatabase()) {
-          }
           return
         }
       }
