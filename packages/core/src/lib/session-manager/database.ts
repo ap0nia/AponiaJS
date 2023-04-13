@@ -3,31 +3,16 @@ import { SessionManager } from '.'
 import type { Session } from '.'
 import type { SessionManagerConfig } from '.'
 
-export interface DatabaseSessionConfig<TUser, TSession> extends SessionManagerConfig {
-  /**
-   * Get the user from the database based on the session, i.e. retrieved from cookies.
-   */
-  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
-
+export interface DatabaseSessionManagerConfig<TUser, TSession> extends SessionManagerConfig<TUser, TSession> {
   /**
    * Create a session from a user ID, i.e. storing it in the database.
    * Session can then be used to create a session token.
    */
   createSession: (userId: string) => MaybePromise<TSession>
-
-  /**
-   * Invalidate a session, i.e. log the user out of a specific session.
-   */
-  invalidateSession: (sessionId: string) => MaybePromise<void>
-
-  /**
-   * Invalidate user's sessions, i.e. log the user out of all sessions.
-   */
-  invalidateUserSessions: (userId: string) => MaybePromise<void>
 }
 
 /**
- * Database session interface.
+ * Database session manager extends the basic JWT-based session manager.
  *
  * Example flow:
  * 1. User logs in. Handle auth yourself.
@@ -40,34 +25,11 @@ export class DatabaseSessionManager<
   TUser = {}, 
   TSession extends Record<string, any> = Session,
 > extends SessionManager<TUser, TSession> {
-  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
 
   createSession: (userId: string) => MaybePromise<TSession>
 
-  invalidateSession: (sessionId: string) => MaybePromise<void>
-
-  invalidateUserSessions: (userId: string) => MaybePromise<void>
-
-  constructor(config: DatabaseSessionConfig<TUser, TSession>) {
+  constructor(config: DatabaseSessionManagerConfig<TUser, TSession>) {
     super(config)
-
-    this.getUserFromSession = config.getUserFromSession
     this.createSession = config.createSession
-    this.invalidateSession = config.invalidateSession
-    this.invalidateUserSessions = config.invalidateUserSessions
-  }
-
-  async getRequestSession(request: Request) {
-    const token = SessionManager.getSessionToken(request)
-
-    if (token == null) return null
-
-    const session = await this.decode<TSession>({ ...this.jwt, token })
-
-    if (session == null) return null
-
-    const user = await this.getUserFromSession?.(session) ?? null
-
-    return { session, user }
   }
 }
