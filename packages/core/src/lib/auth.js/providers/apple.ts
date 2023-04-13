@@ -1,4 +1,4 @@
-import type { OAuthConfig, OAuthUserConfig } from "./index.js"
+import type { OAuthConfig, OAuthUserConfig } from '../index'
 
 /**
  * See more at:
