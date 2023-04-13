@@ -1,5 +1,5 @@
 import * as oauth from 'oauth4webapi'
-import type { OAuthConfig, Provider } from '..'
+import type { OAuthConfig, OAuthProvider } from '../oauth'
 import type { GitHubEmail, GitHubUser } from './types'
 
 /**
@@ -18,10 +18,10 @@ export const GITHUB_ENDPOINTS = {
   revoke: 'https://api.github.com/applications/{client_id}/token',
 } as const
 
-export class GitHub<T extends Record<string, any> = GitHubUser> implements Provider<T> {
+export class GitHub<T extends Record<string, any> = GitHubUser> implements OAuthProvider<T> {
   id = 'github'
 
-  type: Provider<T>['type'] = 'oauth'
+  type: OAuthProvider<T>['type'] = 'oauth'
 
   config: OAuthConfig<T>
 
@@ -29,7 +29,7 @@ export class GitHub<T extends Record<string, any> = GitHubUser> implements Provi
     this.config = config
   }
 
-  getAuthorizationUrl() {
+  login() {
     const state = oauth.generateRandomState()
 
     const authorizationParams = new URLSearchParams({
@@ -42,6 +42,10 @@ export class GitHub<T extends Record<string, any> = GitHubUser> implements Provi
     const authorizationUrl = `${GITHUB_ENDPOINTS.authorization}?${authorizationParams.toString()}`
 
     return [authorizationUrl, state] as const
+  }
+
+  async handleLogin() {
+    return this.login()
   }
 
   async getTokens(code: string) {
@@ -76,6 +80,10 @@ export class GitHub<T extends Record<string, any> = GitHubUser> implements Provi
     return response.ok
   }
 
+  async handleLogout(request: Request) {
+    return this.logout(request.headers.get('Authorization')?.split(' ')[1] ?? '')
+  }
+
   async getUser(access_token: string) {
     const user: GitHubUser = await fetch(GITHUB_ENDPOINTS.user, {
       method: 'GET',
@@ -92,13 +100,7 @@ export class GitHub<T extends Record<string, any> = GitHubUser> implements Provi
     return (await this.config.onLogin?.(user) ?? user) as T
   }
 
-  _authenticateRequestMethod = 'GET'
-
-  async authenticateRequest(request: Request) {
-    if (request.method !== this._authenticateRequestMethod) {
-      throw new Error(`Invalid request method: ${request.method}`)
-    }
-
+  async callback(request: Request) {
     const code = new URL(request.url).searchParams.get('code')
 
     if (code == null) throw new Error('No OAuth code found.')

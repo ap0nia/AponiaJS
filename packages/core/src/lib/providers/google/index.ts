@@ -1,5 +1,5 @@
 import * as oauth from 'oauth4webapi'
-import type { OAuthConfig, Provider } from '..'
+import type { OAuthConfig, OAuthProvider } from '../oauth'
 import type { GoogleProfile } from './types'
 
 export const GOOGLE_ENDPOINTS = {
@@ -13,10 +13,10 @@ export interface GoogleOauthConfig<T extends Record<string, any> = {}> extends O
   redirect_uri: string
 }
 
-export class Google<T extends Record<string, any> = GoogleProfile> implements Provider<T> {
+export class Google<T extends Record<string, any> = GoogleProfile> implements OAuthProvider<T> {
   id = 'google'
 
-  type: Provider<T>['type'] = 'oidc'
+  type: OAuthProvider<T>['type'] = 'oidc'
 
   config: GoogleOauthConfig<T>
 
@@ -24,7 +24,7 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
     this.config = config
   }
 
-  getAuthorizationUrl () {
+  login () {
     const state = oauth.generateRandomState()
 
     const authorizationParams = new URLSearchParams({
@@ -38,6 +38,10 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
     const authorizationUrl = `${GOOGLE_ENDPOINTS.authorization}?${authorizationParams.toString()}`
 
     return [authorizationUrl, state] as const
+  }
+
+  async handleLogin() {
+    return this.login()
   }
 
   async getTokens(code: string) {
@@ -69,6 +73,10 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
     return response.ok
   }
 
+  async handleLogout(request: Request) {
+    return this.logout(request.headers.get('Authorization')?.split(' ')[1] ?? '')
+  }
+
   async getUser(access_token: string) {
     const params = new URLSearchParams({ access_token })
 
@@ -80,7 +88,7 @@ export class Google<T extends Record<string, any> = GoogleProfile> implements Pr
 
   _authenticateRequestMethod = 'GET'
 
-  async authenticateRequest(request: Request) {
+  async callback(request: Request) {
     if (request.method !== this._authenticateRequestMethod) {
       throw new Error(`Invalid request method: ${request.method}`)
     }

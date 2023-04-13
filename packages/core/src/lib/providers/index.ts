@@ -13,60 +13,25 @@ export type ProviderType = "oidc" | "oauth" | "email" | "credentials"
 /**
  * @see [RFC 6749 - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3)
  */
-export type Provider<T> = {
-  /**
-   * An identifier for this provider.
-   */
+export type Provider = {
   id: string,
 
-  /**
-   * The type of authentication flow this provider uses.
-   */
   type: ProviderType,
 
-  /**
-   * The URL to the provider's authorization endpoint.
-   */
-  issuer?: string,
+  login: (...args: any) => MaybePromise<any>
 
-  /**
-   * 1. Get the provider's authorization endpoint and state cookie to start the OAuth flow.
-   * If credentials provider or similar, use redirect status 307 to preserve the request.
-   */
-  getAuthorizationUrl: () => Readonly<[string, string]>
+  logout: (...args: any) => MaybePromise<any>
 
-  /**
-   * The tokens can be stored and revoked later.
-   */
-  logout: (token: string) => Promise<boolean>
+  handleLogin: (request: Request) => MaybePromise<any>
 
-  /**
-   * 1. Get the provider's authorization endpoint and state cookie to start the OAuth flow.
-   * 2. After authorizing and being redirected, exchange the authorization code for tokens.
-   * 3. Use the access token to get the user's profile.
-   */
-  authenticateRequest: (req: Request) => Promise<T>
-
-  /**
-   * Allowed method.
-   */
-  _authenticateRequestMethod: string
+  handleLogout: (request: Request) => MaybePromise<any>
 }
 
 /**
  * Base provider configuration.
  */
 export interface ProviderConfig<T extends Record<string, any> = {}> {
-  onLogin?: (user: any) => MaybePromise<T | null>
-  onLogout?: (user: any) => MaybePromise<void>
+  onLogin?: (...args: any) => MaybePromise<T | null>
+  onLogout?: (...args: any) => MaybePromise<void>
 }
-
-/**
- * Base configuration for OAuth providers.
- */
-export interface OAuthConfig<T extends Record<string, any> = {}> extends ProviderConfig<T> {
-  clientId: string;
-  clientSecret: string;
-  scope?: string[];
-};
 

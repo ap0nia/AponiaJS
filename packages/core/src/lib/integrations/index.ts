@@ -13,7 +13,7 @@ export type Strategy = 'jwt' | 'database' | 'none'
 
 export type IntegrationConfig<T extends Strategy = 'none'> = {
   callbackUrl: string
-  providers: Provider<any>[]
+  providers: Provider[]
   strategy?: T
 } & (
   T extends 'jwt' 
@@ -30,7 +30,7 @@ const defaultConfig: IntegrationConfig = {
 export class Integration<T extends Strategy = 'none'> {
   config: IntegrationConfig<T>
 
-  callbacks: Map<string, Provider<any>>
+  callbacks: Map<string, Provider>
 
   constructor(config: Partial<IntegrationConfig<T>> = {}) {
     this.config = { ...defaultConfig, ...config } as any
@@ -84,7 +84,7 @@ export class Integration<T extends Strategy = 'none'> {
     try {
       switch (splitPath.join('/')) {
         case '/auth/login': {
-          const [url, state] = provider.getAuthorizationUrl()
+          const [url, state] = provider.login()
           return {
             redirect: url,
             status: 307,
