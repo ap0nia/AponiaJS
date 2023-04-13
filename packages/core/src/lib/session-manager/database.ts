@@ -1,5 +1,5 @@
 import type { MaybePromise } from '$lib/utils/promise';
-import { SessionManager, getSessionToken } from '.'
+import { SessionManager } from '.'
 import type { Session } from '.'
 import type { SessionManagerConfig } from '.'
 
@@ -36,7 +36,10 @@ export interface DatabaseSessionConfig<TUser, TSession> extends SessionManagerCo
  * 4. Store the session token in a cookie.
  * 5. On subsequent requests, call `getRequestSession` to get the session from the request cookies.
  */
-export class DatabaseSessionManager<TUser = {}, TSession extends Record<string, any> = Session> extends SessionManager<TSession> {
+export class DatabaseSessionManager<
+  TUser = {}, 
+  TSession extends Record<string, any> = Session,
+> extends SessionManager<TUser, TSession> {
   getUser: (session: TSession) => MaybePromise<TUser | null>
 
   createSession: (userId: string) => MaybePromise<TSession>
@@ -55,7 +58,7 @@ export class DatabaseSessionManager<TUser = {}, TSession extends Record<string, 
   }
 
   async getRequestSession(request: Request) {
-    const token = getSessionToken(request)
+    const token = SessionManager.getSessionToken(request)
 
     if (token == null) return null
 

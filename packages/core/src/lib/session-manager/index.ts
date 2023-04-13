@@ -1,7 +1,7 @@
+import { parse } from 'cookie'
 import { encode, decode } from '$lib/jwt'
 import type { JwtConfig, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
 import type { MaybePromise } from '$lib/utils/promise'
-import { parse } from 'cookie'
 
 export const SESSION_COOKIE_NAME = 'sid'
 
@@ -47,7 +47,13 @@ export interface SessionManagerConfig {
   jwt?: JwtConfig
 }
 
-export class SessionManager<T extends Record<string, any> = Session> {
+export abstract class SessionManager<
+  TUser = {},
+  TSession extends Record<string, any> = Session,
+  RequestSession = { session: TSession | null, user: TUser | null } | null
+> {
+  public static getSessionToken = getSessionToken
+
   jwt: JwtConfig
 
   encode: (params: JWTEncodeParams) => MaybePromise<string>
@@ -60,7 +66,7 @@ export class SessionManager<T extends Record<string, any> = Session> {
     this.decode = config.jwt?.decode ?? decode
   }
 
-  async createSessionToken(session: T) {
+  async createSessionToken(session: TSession) {
     const token = await this.encode({ ...this.jwt, token: session })
     return token
   }
@@ -78,4 +84,6 @@ export class SessionManager<T extends Record<string, any> = Session> {
   invalidateUserSessions(_userId: string): MaybePromise<void> {
     console.log(`InvalidateUserSessions. Not implemented`)
   }
+
+  abstract getRequestSession(request: Request): MaybePromise<RequestSession>
 }
