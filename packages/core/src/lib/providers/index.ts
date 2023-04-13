@@ -57,7 +57,7 @@ export type Provider<T> = {
  * Base provider configuration.
  */
 export interface ProviderConfig<T extends Record<string, any> = {}> {
-  onLogin?: (user: any) => MaybePromise<T>
+  onLogin?: (user: any) => MaybePromise<T | null>
   onLogout?: (user: any) => MaybePromise<void>
 }
 

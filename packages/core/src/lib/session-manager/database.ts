@@ -30,7 +30,7 @@ export type DatabaseSessionConfig<T extends Record<string, any> = {}> = {
   jwt: JwtConfig
 
   /**
-   * Get a user by their ID.
+   * Get a user from a session.
    */
   getUser: (session: Session) => MaybePromise<T | null>
 
