@@ -248,3 +248,175 @@ export type OAuthUserConfig<Profile> =
 export type OIDCUserConfig<Profile> =
   Omit<Partial<OIDCConfig<Profile>>, "options" | "type"> &
   Required<Pick<OIDCConfig<Profile>, "clientId" | "clientSecret">>
+
+
+interface InternalProviderOptions {
+  /** Used to deep merge user-provided config with the default config
+   */
+  options?: Record<string, unknown>
+}
+
+
+/**
+ * Must be a supported authentication provider config:
+ * - {@link OAuthConfig}
+ * - {@link EmailConfigInternal}
+ * - {@link CredentialsConfigInternal}
+ *
+ * For more information, see the guides:
+ *
+ * @see [OAuth/OIDC guide](https://authjs.dev/guides/providers/custom-provider)
+ * @see [Email (Passwordless) guide](https://authjs.dev/guides/providers/email)
+ * @see [Credentials guide](https://authjs.dev/guides/providers/credentials)
+ */
+export type Provider<P extends Profile = Profile> = (
+  | ((OIDCConfig<P> | OAuth2Config<P> ) & InternalProviderOptions)
+  | (( ...args: any) => (OAuth2Config<P> | OIDCConfig<P> ) & InternalProviderOptions)
+) & InternalProviderOptions
+
+let x: Provider[] = []
+
+x.map(p => typeof p === "function" ? p() : p)
+
+interface ParseProvidersParams {
+  providers: Provider[]
+  url: URL
+}
+
+/**
+ * Adds `signinUrl` and `callbackUrl` to each provider
+ * and deep merge user-defined options.
+ */
+export default function parseProviders(params: ParseProvidersParams): InternalProvider[] {
+  const { url } = params
+
+  const providers: InternalProvider[] = params.providers.map((providerConfig) => {
+    const provider = typeof providerConfig === "function" ? providerConfig() : providerConfig
+
+    const { options: userOptions, ...defaults } = provider
+
+    const id = (userOptions?.id ?? defaults.id) as string
+
+    const merged = merge(defaults, userOptions, {
+      signinUrl: `${url}/signin/${id}`,
+      callbackUrl: `${url}/callback/${id}`,
+    })
+
+    return provider.type === "oauth" || provider.type === "oidc" ? normalizeOAuth(merged) : merged
+  })
+
+  return providers
+}
+
+
+/** @internal */
+export type InternalProvider<T = ProviderType> = (T extends "oauth"
+  ? OAuthConfigInternal<any>
+  // : T extends "email"
+  // ? EmailConfig
+  // : T extends "credentials"
+  // ? CredentialsConfig
+  : never) & {
+  signinUrl: string
+  callbackUrl: string
+}
+
+export type MergedConfig = (OIDCConfig<any> | OAuth2Config<any>) & InternalProviderOptions
+
+/** 
+ * TODO: Also add discovery here, if some endpoints/config are missing.
+ * We should return both a client and authorization server config.
+ */
+function normalizeOAuth(c: MergedConfig): OAuthConfigInternal<any> {
+  const authorization = normalizeEndpoint(c.authorization, c.issuer)
+
+  const wellKnown = c.issuer 
+    ? c.wellKnown ?? `${c.issuer}/.well-known/openid-configuration`
+    : c.wellKnown
+
+  if (authorization && !authorization.url?.searchParams.has("scope")) {
+    authorization.url.searchParams.set("scope", "openid profile email")
+  }
+
+  const token = normalizeEndpoint<'token'>(c.token, c.issuer)
+
+  const userinfo = normalizeEndpoint<'userinfo'>(c.userinfo, c.issuer)
+
+  return {
+    ...c,
+    clientId: c.clientId ?? '',
+    wellKnown,
+    authorization,
+    token,
+    checks: c.checks ?? ["pkce"],
+    userinfo,
+    profile: c.profile ?? defaultProfile,
+  }
+}
+
+function defaultProfile(profile: any) {
+  return {
+    id: profile.sub ?? profile.id,
+    name: profile.name ?? profile.nickname ?? profile.preferred_username ?? null,
+    email: profile.email ?? null,
+    image: profile.picture ?? null,
+  }
+}
+function normalizeEndpoint<T extends OAuthEndpointType>(
+  e?: OAuthConfig<any>[T],
+  issuer?: string
+): OAuthConfigInternal<any>[T] {
+  if (!e && issuer) return
+
+  if (typeof e === "string") {
+    return { url: new URL(e) }
+  }
+
+  /**
+   * If e.url is undefined, it's because the provider config assumes that we will use the issuer endpoint.
+   *
+   * The existence of either e.url or provider.issuer is checked in assert.ts.
+   * We fallback to "https://authjs.dev" to be able to pass around
+   * a valid URL even if the user only provided params.
+   *
+   * NOTE: This need to be checked when constructing the URL 
+   * for the authorization, token and userinfo endpoints.
+   */
+  const url = new URL(e?.url ?? "https://authjs.dev")
+
+  if (e?.params != null) {
+    Object.entries(e.params).forEach(([key, value]) => {
+      url.searchParams.set(key, key === 'claims' ? JSON.stringify(value) : String(value))
+    })
+  }
+  return { url, request: e?.request, conform: e?.conform } as OAuthConfigInternal<any>[T]
+}
+
+/** 
+ * Simple object check
+ */
+function isObject(item: any): boolean {
+  return item && typeof item === "object" && !Array.isArray(item)
+}
+
+/** 
+ * Deep merge two objects
+ * Source: https://stackoverflow.com/a/34749873/5364135
+ */
+export function merge(target: any, ...sources: any[]): any {
+  if (!sources.length) return target
+  const source = sources.shift()
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} })
+        merge(target[key], source[key])
+      } else {
+        Object.assign(target, { [key]: source[key] })
+      }
+    }
+  }
+
+  return merge(target, ...sources)
+}
