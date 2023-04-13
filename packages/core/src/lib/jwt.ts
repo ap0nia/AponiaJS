@@ -18,7 +18,7 @@ async function getDerivedEncryptionKey(secret: string) {
   return derivedEncryptionKey;
 }
 
-export type JwtConfig = {
+export interface JWTOptions {
   secret: string
   maxAge?: number
   encode?: (params: JWTEncodeParams) => MaybePromise<string>

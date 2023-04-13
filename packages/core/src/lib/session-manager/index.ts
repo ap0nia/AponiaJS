@@ -1,6 +1,6 @@
 import { parse } from 'cookie'
 import { encode, decode } from '$lib/jwt'
-import type { JwtConfig, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
+import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
 import type { MaybePromise } from '$lib/utils/promise'
 
 export const ACCESS_TOKEN_COOKIE_NAME = 'aponia-access'
@@ -48,7 +48,7 @@ export interface SessionManagerConfig<TUser, TSession> {
   /**
    * JWT configuration.
    */
-  jwt?: JwtConfig
+  jwt?: JWTOptions
 
   /**
    * Get the user from the session, i.e. retrieved from cookies.
@@ -82,7 +82,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   /**
    * JWT configuration.
    */
-  jwt: JwtConfig
+  jwt: JWTOptions
 
   /**
    * Designated JWT encoder.
