@@ -1,6 +1,6 @@
 import * as checks from '../check'
 import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response'
-import type { AnyInternalConfig, InternalOAuthConfig, InternalOIDCConfig } from '../providers'
+import type { AnyInternalConfig, InternalOAuthConfig, InternalOIDCConfig } from '..'
 
 export interface Provider<T extends AnyInternalConfig> {
   config: T

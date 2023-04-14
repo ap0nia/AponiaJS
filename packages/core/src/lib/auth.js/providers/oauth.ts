@@ -3,8 +3,8 @@ import type { Cookie } from '$lib/integrations/response';
 import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
 import * as checks from '../check'
 import { handleOAuthUrl } from './index';
-import type { InternalOAuthConfig } from '../providers'
-import type { Provider } from './index';
+import type { InternalOAuthConfig } from '..'
+import type { Provider } from '.';
 
 
 export class OAuthProvider implements Provider <InternalOAuthConfig> {

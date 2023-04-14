@@ -2,9 +2,9 @@ import * as oauth from 'oauth4webapi'
 import type { Cookie } from '$lib/integrations/response';
 import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
 import * as checks from '../check'
-import type { InternalOIDCConfig } from '../providers'
-import type { Provider } from './index';
-import { handleOAuthUrl } from './index'
+import { handleOAuthUrl } from '.'
+import type { InternalOIDCConfig } from '..'
+import type { Provider } from '.';
 
 
 export class OIDCProvider implements Provider<InternalOIDCConfig> {
