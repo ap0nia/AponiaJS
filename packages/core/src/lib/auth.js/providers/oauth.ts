@@ -73,6 +73,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
+    console.log("OAuthProvider.signOut not implemented ", request)
     return {}
   }
 }

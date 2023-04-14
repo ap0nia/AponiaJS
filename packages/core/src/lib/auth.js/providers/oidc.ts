@@ -74,6 +74,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
+    console.log("OIDCProvider.signOut not implemented ", request)
     return {}
   }
 }
