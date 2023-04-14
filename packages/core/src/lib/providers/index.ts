@@ -9,6 +9,9 @@ type Awaitable<T> = T | PromiseLike<T>
  * All providers have these methods.
  */
 export interface Provider<T extends AnyInternalConfig> {
+  /**
+   * Provider config transformed from Auth.js provider.
+   */
   config: T
 
   /**
@@ -38,7 +41,7 @@ export interface Provider<T extends AnyInternalConfig> {
  */
 export type ProviderType = "oidc" | "oauth" | "email" | "credentials"
 
-export type OAuthProviderType = "oidc" | "oauth"
+export type OAuthProviderType = Extract<ProviderType, "oidc" | "oauth">
 
 /**
  * Any internally generated config.
@@ -48,7 +51,6 @@ export type AnyInternalConfig =
   | InternalOIDCConfig 
   | InternalEmailConfig 
   | InternalCredentialsConfig
-
 
 /**
  * Required config options for all providers.
