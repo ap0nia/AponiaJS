@@ -1,3 +1,4 @@
+import type { Override } from '$lib/utils/override'
 import type { CookieSerializeOptions } from 'cookie'
 
 /**
@@ -22,6 +23,7 @@ export interface InternalResponse {
   cookies?: Cookie[]
 }
 
-export interface InternalRequest extends Request {
+export type InternalRequest = Override<Request, {
+  url: URL
   cookies: Record<string, string>
-}
+}>

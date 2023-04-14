@@ -24,6 +24,8 @@ export interface Profile {
  */
 export type ProviderType = "oidc" | "oauth" | "email" | "credentials"
 
+export type AnyInternalOAuthConfig = InternalOAuthConfig | InternalOIDCConfig
+
 /**
  * Required config options for all providers.
  */
