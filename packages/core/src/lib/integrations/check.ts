@@ -2,7 +2,7 @@ import * as oauth from "oauth4webapi"
 import { encode, decode } from "$lib/jwt"
 import type { CookiesOptions } from "@auth/core/types"
 import type { Cookie, InternalRequest } from "$lib/integrations/response"
-import type { AnyInternalOAuthConfig } from "."
+import type { AnyInternalOAuthConfig } from "$lib/providers"
 
 type CheckPayload =  { value: string }
 

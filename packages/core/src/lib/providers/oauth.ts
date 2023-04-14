@@ -1,14 +1,12 @@
 import * as oauth from 'oauth4webapi'
-import type { Cookie } from '$lib/integrations/response';
-import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
-import * as checks from '../check'
-import { handleOAuthUrl } from '.'
-import type { InternalOIDCConfig } from '..'
-import type { Provider } from '.';
+import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response';
+import * as checks from '$lib/integrations/check'
+import { handleOAuthUrl } from '.';
+import type { Provider, InternalOAuthConfig } from '.'
 
 
-export class OIDCProvider implements Provider<InternalOIDCConfig> {
-  constructor(readonly config: InternalOIDCConfig) {}
+export class OAuthProvider implements Provider <InternalOAuthConfig> {
+  constructor(readonly config: InternalOAuthConfig) {}
 
   async signIn(request: InternalRequest): Promise<InternalResponse> {
     return handleOAuthUrl(request, this.config)
@@ -40,8 +38,8 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
       provider.authorizationServer,
       provider.client,
       codeGrantParams,
-      'auth url',
-      pkce,
+      'provider.callbackUrl',
+      pkce
     )
 
     const codeGrantResponse = await provider.token.conform(initialCodeGrantResponse.clone())
@@ -49,32 +47,32 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
     const challenges = oauth.parseWwwAuthenticateChallenges(codeGrantResponse)
 
     if (challenges) {
-      challenges.forEach(challenge => { console.log("challenge", challenge) })
+      challenges.forEach(challenge => { 
+        console.log("challenge", challenge)
+      })
       throw new Error("TODO: Handle www-authenticate challenges as needed")
     }
 
-    const [nonce, nonceCookie] = await checks.nonce.use(request, provider)
-
-    if (nonceCookie) cookies.push(nonceCookie)
-
-    const result = await oauth.processAuthorizationCodeOpenIDResponse(
+    const tokens = await oauth.processAuthorizationCodeOAuth2Response(
       provider.authorizationServer,
       provider.client,
       codeGrantResponse,
-      nonce,
     )
 
-    if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
+    if (oauth.isOAuth2Error(tokens)) throw new Error("TODO: Handle OAuth 2.0 response body error")
 
-    const profile = oauth.getValidatedIdTokenClaims(result)
+    const profile = await provider.userinfo.request({ tokens, provider })
 
-    const profileResult = await provider.profile(profile, result)
+    if (!profile) throw new Error("TODO: Handle missing profile")
+
+    const profileResult = await provider.profile(profile, tokens)
 
     return { ...profileResult, cookies }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    console.log("OIDCProvider.signOut not implemented ", request)
+    console.log("OAuthProvider.signOut not implemented ", request)
     return {}
   }
 }
+

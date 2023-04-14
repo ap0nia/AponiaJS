@@ -1,6 +1,5 @@
 import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
-import type { InternalCredentialsConfig } from '..'
-import type { Provider } from './index'
+import type { Provider, InternalCredentialsConfig } from '.'
 
 export class CredentialsProvider implements Provider<InternalCredentialsConfig> {
   constructor(readonly config: InternalCredentialsConfig) {}

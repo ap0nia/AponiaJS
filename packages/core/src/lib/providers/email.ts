@@ -1,6 +1,5 @@
 import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
-import type { Provider } from './index'
-import type { InternalEmailConfig } from '..'
+import type { Provider, InternalEmailConfig } from '.'
 
 
 export class EmailProvider implements Provider<InternalEmailConfig> {
