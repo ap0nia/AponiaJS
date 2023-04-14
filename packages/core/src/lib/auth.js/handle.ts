@@ -39,24 +39,17 @@ const STATE_MAX_AGE = 60 * 15 // 15 minutes in seconds
 const PKCE_MAX_AGE = 60 * 15 // 15 minutes in seconds
 const NONCE_MAX_AGE = 60 * 15 // 15 minutes in seconds
 
-export async function handleOAuth(
-  _request: InternalRequest,
-  provider: InternalOAuthConfig | InternalOIDCConfig
-): Promise<InternalResponse> {
+type Handler<T extends AnyInternalConfig> = (request: InternalRequest, provider: T) => Promise<InternalResponse>
+
+export const handleOAuth: Handler<InternalOAuthConfig> = async (_request, provider) => {
   return handleOAuthUrl(_request, provider)
 }
 
-export async function handleOIDC(
-  _request: InternalRequest,
-  provider: InternalOAuthConfig | InternalOIDCConfig
-): Promise<InternalResponse> {
+export const handleOIDC: Handler<InternalOIDCConfig> = async (_request, provider) => {
   return handleOAuthUrl(_request, provider)
 }
 
-export async function handleOAuthUrl(
-  _request: InternalRequest,
-  provider: InternalOAuthConfig | InternalOIDCConfig
-): Promise<InternalResponse> {
+export const handleOAuthUrl: Handler<InternalOAuthConfig | InternalOIDCConfig> = async (_request, provider) => {
   const cookies: Cookie[] = []
   const { url } = provider.authorization
 
@@ -92,10 +85,7 @@ export async function handleOAuthUrl(
 
 interface CheckPayload { value: string }
 
-export async function handleOAuthCallback(
-  request: InternalRequest,
-  provider: InternalOAuthConfig
-): Promise<InternalResponse> {
+export const handleOAuthCallback: Handler<InternalOAuthConfig> = async (request, provider) => {
   const cookies: Cookie[] = []
 
   const state = request.cookies.state
@@ -172,10 +162,7 @@ export async function handleOAuthCallback(
   }
 }
 
-export async function handleOIDCCallback(
-  request: InternalRequest,
-  provider:  InternalOIDCConfig
-): Promise<InternalResponse> {
+export const handleOIDCCallback: Handler<InternalOIDCConfig> = async (request, provider) => {
   const cookies: Cookie[] = []
 
   const state = request.cookies.state
@@ -259,18 +246,12 @@ export async function handleOIDCCallback(
   }
 }
 
-export async function handleEmail(
-  request: InternalRequest, 
-  provider: InternalEmailConfig
-): Promise<InternalResponse> {
+export const handleEmail: Handler<InternalEmailConfig> = async (request, provider) => {
   console.log({ request, provider })
   return {}
 }
 
-export async function handleCredentials(
-  request: InternalRequest,
-  provider: InternalCredentialsConfig
-): Promise<InternalResponse> {
+export const handleCredentials: Handler<InternalCredentialsConfig> = async (request, provider) => {
   console.log({ request, provider })
   return {}
 }
