@@ -2,7 +2,7 @@ import * as oauth from 'oauth4webapi'
 import type { Cookie } from '$lib/integrations/response';
 import type { InternalRequest, InternalResponse } from '$lib/integrations/response'
 import * as checks from '../check'
-import { handleOAuthUrl } from '../handle';
+import { handleOAuthUrl } from './index';
 import type { InternalOAuthConfig } from '../providers'
 import type { Provider } from './index';
 
@@ -10,11 +10,13 @@ import type { Provider } from './index';
 export class OAuthProvider implements Provider <InternalOAuthConfig> {
   constructor(readonly config: InternalOAuthConfig) {}
 
-  async signIn(request: InternalRequest, provider: InternalOAuthConfig): Promise<InternalResponse> {
-    return handleOAuthUrl(request, provider)
+  async signIn(request: InternalRequest): Promise<InternalResponse> {
+    return handleOAuthUrl(request, this.config)
   }
 
-  async callback(request: InternalRequest, provider: InternalOAuthConfig): Promise<InternalResponse> {
+  async callback(request: InternalRequest): Promise<InternalResponse> {
+    const provider = this.config
+
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, provider)
@@ -70,7 +72,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     return { ...profileResult, cookies }
   }
 
-  async signOut(request: InternalRequest, provider: InternalOAuthConfig): Promise<InternalResponse> {
+  async signOut(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
 }

@@ -4,17 +4,19 @@ import type { InternalRequest, InternalResponse } from '$lib/integrations/respon
 import * as checks from '../check'
 import type { InternalOIDCConfig } from '../providers'
 import type { Provider } from './index';
-import { handleOAuthUrl } from '../handle';
+import { handleOAuthUrl } from './index'
 
 
 export class OIDCProvider implements Provider<InternalOIDCConfig> {
   constructor(readonly config: InternalOIDCConfig) {}
 
-  async signIn(request: InternalRequest, provider: InternalOIDCConfig): Promise<InternalResponse> {
-    return handleOAuthUrl(request, provider)
+  async signIn(request: InternalRequest): Promise<InternalResponse> {
+    return handleOAuthUrl(request, this.config)
   }
 
-  async callback(request: InternalRequest, provider: InternalOIDCConfig): Promise<InternalResponse> {
+  async callback(request: InternalRequest): Promise<InternalResponse> {
+    const provider = this.config
+
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, provider)
@@ -71,7 +73,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
     return { ...profileResult, cookies }
   }
 
-  async signOut(request: InternalRequest, provider: InternalOIDCConfig): Promise<InternalResponse> {
+  async signOut(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
 }

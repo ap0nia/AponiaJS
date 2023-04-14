@@ -6,15 +6,15 @@ import type { InternalEmailConfig } from '../providers'
 export class EmailProvider implements Provider<InternalEmailConfig> {
   constructor(readonly config: InternalEmailConfig) {}
 
-  async signIn(request: InternalRequest, provider: InternalEmailConfig): Promise<InternalResponse> {
+  async signIn(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
 
-  async callback(request: InternalRequest, provider: InternalEmailConfig): Promise<InternalResponse> {
+  async callback(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
 
-  async signOut(request: InternalRequest, provider: InternalEmailConfig): Promise<InternalResponse> {
+  async signOut(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
 }
