@@ -115,7 +115,6 @@ export interface AnyInternalOAuthConfig<T extends OAuthProviderType = OAuthProvi
    * Additional data about the authorization endpoint.
    */
   authorization: { 
-
     /**
      * Full URL to authorization endpoint with search params.
      */
@@ -126,7 +125,6 @@ export interface AnyInternalOAuthConfig<T extends OAuthProviderType = OAuthProvi
    * Additional data about the token endpoint.
    */
   token: {
-
     /**
      * Full URL to token endpoint.
      */
@@ -142,7 +140,6 @@ export interface AnyInternalOAuthConfig<T extends OAuthProviderType = OAuthProvi
    * Additional data about the userinfo endpoint.
    */
   userinfo: {
-
     /**
      * Full URL to userinfo endpoint.
      */
