@@ -1,7 +1,18 @@
 import * as oauth from 'oauth4webapi'
-import type { Awaitable } from '$lib/utils/promise'
-import type { Profile, TokenSet, User } from '@auth/core/types'
+import type { CookiesOptions, TokenSet, User } from '@auth/core/types'
 import type { CredentialsConfig, EmailConfig, OAuth2Config, OIDCConfig, Provider } from '@auth/core/providers'
+import type { Awaitable } from '$lib/utils/promise'
+import type { JWTOptions } from '$lib/jwt'
+
+/** 
+ * The OAuth profile returned from your provider
+ */
+export interface Profile {
+  sub?: string | null
+  name?: string | null
+  email?: string | null
+  image?: string | null
+}
 
 /**
  * Providers passed to Auth.js must define one of these types.
@@ -49,10 +60,16 @@ export interface InternalOAuthConfig extends ProviderConfig {
    */
   client: oauth.Client
 
+  cookies: CookiesOptions
+
+  jwt: JWTOptions
+
+  checks: Array<"pkce" | "state" | "none" | "nonce">
+
   /**
    * Receives the profile object returned by the OAuth provider, and returns a user object.
    */
-  profile?: (profile: Profile, tokens: TokenSet) => Awaitable<User>
+  profile: (profile: Profile, tokens: TokenSet) => Awaitable<User>
 
   /**
    * Additional data about the authorization endpoint.
@@ -78,7 +95,7 @@ export interface InternalOAuthConfig extends ProviderConfig {
     /**
      * Process the response from the token endpoint.
      */
-    conform: (response: Response) => Awaitable<Response | undefined>
+    conform: (response: Response) => Awaitable<Response>
   }
 
   /**
@@ -116,10 +133,16 @@ export interface InternalOIDCConfig extends ProviderConfig {
    */
   client: oauth.Client
 
+  checks: Array<"pkce" | "state" | "none" | "nonce">
+
+  cookies: CookiesOptions
+
+  jwt: JWTOptions
+
   /**
    * Receives the profile object returned by the OAuth provider, and returns a user object.
    */
-  profile?: (profile: Profile, tokens: TokenSet) => Awaitable<User>
+  profile: (profile: Profile, tokens: TokenSet) => Awaitable<User>
 
   /**
    * Additional data about the authorization endpoint.
@@ -145,7 +168,7 @@ export interface InternalOIDCConfig extends ProviderConfig {
     /**
      * Process the response from the token endpoint.
      */
-    conform: (response: Response) => Awaitable<Response | undefined>
+    conform: (response: Response) => Awaitable<Response>
   }
 
   /**
@@ -267,17 +290,17 @@ export async function transformOAuthProvider(provider: OAuth2Config<any>): Promi
     ? provider.userinfo.request(context)
     : oauth.userInfoRequest(authorizationServer, client, context.tokens.access_token).then(res => res.json())
 
-    const profile = await request
-
-    const profileResult = await getProfile(profile, provider, context.tokens)
-
-    return profileResult
+    return request
   }
 
   return {
     ...provider,
     authorizationServer,
     client,
+    cookies: undefined as any,
+    jwt: undefined as any,
+    checks: [],
+    profile: undefined as any,
     authorization: { 
       url: authorizationUrl
     },
@@ -295,8 +318,12 @@ export async function transformOAuthProvider(provider: OAuth2Config<any>): Promi
 export async function transformOIDCProvider(provider: OIDCConfig<any>): Promise<InternalOIDCConfig> {
   return {
     ...provider,
+    profile: undefined as any,
     authorizationServer: undefined as any,
     client: undefined as any,
+    cookies: undefined as any,
+    checks: [],
+    jwt: undefined as any,
     authorization: undefined as any,
     token: undefined as any,
     userinfo: undefined as any
