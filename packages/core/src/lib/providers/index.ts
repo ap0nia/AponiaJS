@@ -6,32 +6,6 @@ import type { JWTOptions } from '$lib/jwt'
 type Awaitable<T> = T | PromiseLike<T>
 
 /**
- * All providers have these methods.
- */
-export interface Provider<T extends AnyInternalConfig> {
-  /**
-   * Provider config transformed from Auth.js provider.
-   */
-  config: T
-
-  /**
-   * Handle sign-in attempt with provider.
-   */
-  signIn(request: InternalRequest): Awaitable<InternalResponse>
-
-  /**
-   * Follow-up after sign-in. 
-   * Only OAuth providers have this method. Ignore for other providers.
-   */
-  callback(request: InternalRequest): Awaitable<InternalResponse>
-
-  /**
-   * Handle sign-out attempt with provider.
-   */
-  signOut(request: InternalRequest): Awaitable<InternalResponse>
-}
-
-/**
  * Providers passed to Auth.js must define one of these types.
  *
  * @see [RFC 6749 - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3)
@@ -41,16 +15,10 @@ export interface Provider<T extends AnyInternalConfig> {
  */
 export type ProviderType = "oidc" | "oauth" | "email" | "credentials"
 
-export type OAuthProviderType = Extract<ProviderType, "oidc" | "oauth">
-
 /**
- * Any internally generated config.
+ * Specifically OAuth providers.
  */
-export type AnyInternalConfig = 
-  | InternalOAuthConfig 
-  | InternalOIDCConfig 
-  | InternalEmailConfig 
-  | InternalCredentialsConfig
+export type OAuthProviderType = Extract<ProviderType, "oidc" | "oauth">
 
 /**
  * Required config options for all providers.
@@ -154,7 +122,6 @@ export interface AnyInternalOAuthConfig<T extends OAuthProviderType = OAuthProvi
   }
 }
 
-
 /**
  * Internally generated config for OAuth providers from Auth.js .
  */
@@ -174,3 +141,39 @@ export interface InternalEmailConfig extends ProviderConfig { type: 'email' }
  * Internally generated config for credentials authentication.
  */
 export interface InternalCredentialsConfig extends ProviderConfig { type: 'credentials' }
+
+/**
+ * Any internally generated config.
+ */
+export type AnyInternalConfig = 
+  | InternalOAuthConfig 
+  | InternalOIDCConfig 
+  | InternalEmailConfig 
+  | InternalCredentialsConfig
+
+/**
+ * All providers have these methods.
+ */
+export interface Provider<T extends AnyInternalConfig = AnyInternalConfig> {
+  /**
+   * Provider config transformed from Auth.js provider.
+   */
+  config: T
+
+  /**
+   * Handle sign-in attempt with provider.
+   */
+  signIn(request: InternalRequest): Awaitable<InternalResponse>
+
+  /**
+   * Follow-up after sign-in. 
+   * Only OAuth providers have this method. Ignore for other providers.
+   */
+  callback(request: InternalRequest): Awaitable<InternalResponse>
+
+  /**
+   * Handle sign-out attempt with provider.
+   */
+  signOut(request: InternalRequest): Awaitable<InternalResponse>
+}
+
