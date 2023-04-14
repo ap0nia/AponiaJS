@@ -1,5 +1,5 @@
 import type * as oauth from 'oauth4webapi'
-import type { CookiesOptions, TokenSet, User } from '@auth/core/types'
+import type { CookiesOptions, Profile, TokenSet, User } from '@auth/core/types'
 import * as checks from '$lib/integrations/check'
 import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response'
 import type { JWTOptions } from '$lib/jwt'
@@ -58,16 +58,6 @@ export async function handleOAuthUrl(
   }
 
   return { redirect: url.toString(), cookies }
-}
-
-/** 
- * The OAuth profile returned from your provider
- */
-export interface Profile {
-  sub?: string | null
-  name?: string | null
-  email?: string | null
-  image?: string | null
 }
 
 /**
