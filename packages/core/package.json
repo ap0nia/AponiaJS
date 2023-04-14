@@ -6,6 +6,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@auth/core": "^0.5.1",
     "@panva/hkdf": "^1.0.4",
     "cookie": "^0.5.0",
     "jose": "^4.13.1",
