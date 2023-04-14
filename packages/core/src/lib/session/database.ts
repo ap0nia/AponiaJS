@@ -1,14 +1,15 @@
-import type { MaybePromise } from '$lib/utils/promise';
 import { SessionManager } from '.'
 import type { Session } from '.'
 import type { SessionManagerConfig } from '.'
+
+type Awaitable<T> = T | PromiseLike<T>
 
 export interface DatabaseSessionManagerConfig<TUser, TSession> extends SessionManagerConfig<TUser, TSession> {
   /**
    * Create a session from a user ID, i.e. storing it in the database.
    * Session can then be used to create a session token.
    */
-  createSession: (userId: string) => MaybePromise<TSession>
+  createSession: (userId: string) => Awaitable<TSession>
 }
 
 /**
@@ -26,7 +27,7 @@ export class DatabaseSessionManager<
   TSession extends Record<string, any> = Session,
 > extends SessionManager<TUser, TSession> {
 
-  createSession: (userId: string) => MaybePromise<TSession>
+  createSession: (userId: string) => Awaitable<TSession>
 
   constructor(config: DatabaseSessionManagerConfig<TUser, TSession>) {
     super(config)

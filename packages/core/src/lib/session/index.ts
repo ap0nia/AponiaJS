@@ -1,7 +1,8 @@
 import { parse } from 'cookie'
 import { encode, decode } from '$lib/jwt'
 import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
-import type { MaybePromise } from '$lib/utils/promise'
+
+type Awaitable<T> = T | PromiseLike<T>
 
 export const ACCESS_TOKEN_COOKIE_NAME = 'aponia-access'
 
@@ -53,17 +54,17 @@ export interface SessionManagerConfig<TUser, TSession> {
   /**
    * Get the user from the session, i.e. retrieved from cookies.
    */
-  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
+  getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
 
   /**
    * Invalidate a session, i.e. log the user out of a specific session.
    */
-  invalidateSession?: (sessionId: string) => MaybePromise<void>
+  invalidateSession?: (sessionId: string) => Awaitable<void>
 
   /**
    * Invalidate user's sessions, i.e. log the user out of all sessions.
    */
-  invalidateUserSessions?: (userId: string) => MaybePromise<void>
+  invalidateUserSessions?: (userId: string) => Awaitable<void>
 }
 
 /**
@@ -87,27 +88,27 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   /**
    * Designated JWT encoder.
    */
-  encode: (params: JWTEncodeParams) => MaybePromise<string>
+  encode: (params: JWTEncodeParams) => Awaitable<string>
 
   /**
    * Designated JWT decoder.
    */
-  decode: <T>(params: JWTDecodeParams) => MaybePromise<T | null>
+  decode: <T>(params: JWTDecodeParams) => Awaitable<T | null>
 
   /**
    * Get the user from the session, i.e. retrieved from cookies.
    */
-  getUserFromSession?: (session: TSession) => MaybePromise<TUser | null>
+  getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
 
   /**
    * Invalidate a session, i.e. log the user out of a specific session.
    */
-  invalidateSession: (sessionId: string) => MaybePromise<void> 
+  invalidateSession: (sessionId: string) => Awaitable<void> 
 
   /**
    * Invalidate user's sessions, i.e. log the user out of all sessions.
    */
-  invalidateUserSessions: (userId: string) => MaybePromise<void>
+  invalidateUserSessions: (userId: string) => Awaitable<void>
 
   constructor(config: SessionManagerConfig<TUser, TSession>) {
     this.jwt = config?.jwt ?? { secret: '' }

@@ -1,7 +1,8 @@
 import { EncryptJWT, jwtDecrypt } from "jose";
 import type { JWTPayload } from "jose";
 import { hkdf } from "@panva/hkdf";
-import type { MaybePromise } from "./utils/promise";
+
+type Awaitable<T> = T | PromiseLike<T>
 
 const DEFAULT_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
@@ -21,8 +22,8 @@ async function getDerivedEncryptionKey(secret: string) {
 export interface JWTOptions {
   secret: string
   maxAge?: number
-  encode?: (params: JWTEncodeParams) => MaybePromise<string>
-  decode?: <T>(params: JWTDecodeParams) => MaybePromise<T | null>
+  encode?: (params: JWTEncodeParams) => Awaitable<string>
+  decode?: <T>(params: JWTDecodeParams) => Awaitable<T | null>
 }
 
 export interface JWTEncodeParams<T extends Record<string, any> = {}> {

@@ -1,5 +1,6 @@
-import type { Override } from '$lib/utils/override'
 import type { CookieSerializeOptions } from 'cookie'
+
+type Override<Left, Right> = Omit<Left, keyof Right> & Right
 
 /**
  * Internally generated cookies.

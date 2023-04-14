@@ -2,8 +2,9 @@ import type * as oauth from 'oauth4webapi'
 import type { CookiesOptions, TokenSet, User } from '@auth/core/types'
 import * as checks from '$lib/integrations/check'
 import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response'
-import type { Awaitable } from '$lib/utils/promise'
 import type { JWTOptions } from '$lib/jwt'
+
+type Awaitable<T> = T | PromiseLike<T>
 
 export interface Provider<T extends AnyInternalConfig> {
   config: T
