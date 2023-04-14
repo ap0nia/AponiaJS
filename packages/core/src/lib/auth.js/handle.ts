@@ -38,7 +38,7 @@ export async function handleAuth(request: Request, provider: AnyInternalConfig):
 /**
  * Internal request handler.
  */
-type Handler<T extends AnyInternalConfig> = (
+export type Handler<T extends AnyInternalConfig> = (
   request: InternalRequest,
   provider: T
 ) => Promise<InternalResponse>
