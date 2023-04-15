@@ -36,7 +36,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     }
 
     if (!url.searchParams.has('redirect_uri')) {
-      url.searchParams.set('redirect_uri', `${request.url.origin}/callback/${provider.id}`)
+      url.searchParams.set('redirect_uri', `${request.url.origin}/auth/callback/${provider.id}`)
     }
 
     return { redirect: url.toString(), cookies }

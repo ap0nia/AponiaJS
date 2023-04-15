@@ -1,11 +1,11 @@
 import { decode, encode } from "$lib/jwt"
 import type { JWTOptions } from "$lib/jwt"
 import type { Provider as AponiaProvider } from "$lib/providers"
-import { parse, type CookieSerializeOptions } from "cookie"
+import { parse } from "cookie"
 import { defaultCookies } from "./cookie"
 import type { InternalRequest, InternalResponse } from "./response"
 import type { Provider } from "@auth/core/providers"
-import { transformProviders, type ProviderOptions } from './providers'
+import { transformProviders, type ProviderOptions, type CookiesOptions } from './providers'
 import { OAuthProvider } from "$lib/providers/oauth"
 import { OIDCProvider } from "$lib/providers/oidc"
 import { CredentialsProvider } from "$lib/providers/credentials"
@@ -29,28 +29,8 @@ interface PagesOptions {
   newUser: string
 }
 
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-interface CookieOption {
-  name: string
-  options: CookieSerializeOptions
-}
-
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-interface CookiesOptions {
-  sessionToken: CookieOption
-  callbackUrl: CookieOption
-  csrfToken: CookieOption
-  pkceCodeVerifier: CookieOption
-  state: CookieOption
-  nonce: CookieOption
-}
-
 export interface AuthConfig {
-  providers: Provider[]
+  providers?: Provider<any>[]
   secret?: string
   session?: {
     strategy?: "jwt" | "database"
@@ -78,8 +58,6 @@ export interface InternalAuthConfig extends ProviderOptions {
   csrfTokenVerified?: boolean
   secret: string
   session: NonNullable<Required<AuthConfig["session"]>>
-  jwt: JWTOptions
-  cookies: CookiesOptions
 
   // pages: Partial<PagesOptions>
   // theme: Theme
@@ -136,11 +114,15 @@ export class Auth {
     this._config = authOptions
 
     this.providers = []
+
+    this.initializeProviders()
   }
 
   async initializeProviders() {
+    const providers = this._config.providers ?? []
+
     const internalProviderConfigs = await Promise.all(
-      this._config.providers.map(provider => transformProviders(provider, this.config))
+      providers.map(provider => transformProviders(provider, this.config))
     )
 
     const internalProviders = await Promise.all(
@@ -161,11 +143,10 @@ export class Auth {
     this.providers = internalProviders
   }
 
-  async handle(request: Request): Promise<Response> {
+  async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
     const internalResponse = await this.providers[0].signIn(internalRequest)
-    const externalResponse = toExternalResponse(internalResponse)
-    return externalResponse
+    return internalResponse
   }
 }
 
@@ -175,7 +156,3 @@ async function toInternalRequest(request: Request): Promise<InternalRequest> {
   return { ...request, url, cookies }
 }
 
-async function toExternalResponse(response: InternalResponse): Promise<Response> {
-  const externalResponse = new Response(await response.body?.json())
-  return externalResponse
-}
