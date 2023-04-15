@@ -39,7 +39,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
       url.searchParams.set('redirect_uri', `${request.url.origin}/auth/callback/${provider.id}`)
     }
 
-    return { redirect: url.toString(), cookies }
+    return { status: 302, redirect: url.toString(), cookies }
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
@@ -54,7 +54,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     const codeGrantParams = oauth.validateAuthResponse(
       provider.authorizationServer,
       provider.client,
-      provider.authorization.url.searchParams,
+      request.url.searchParams,
       state,
     )
 
@@ -68,7 +68,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
       provider.authorizationServer,
       provider.client,
       codeGrantParams,
-      'provider.callbackUrl',
+      provider.endpoints.callback,
       pkce
     )
 
@@ -82,6 +82,8 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
       })
       throw new Error("TODO: Handle www-authenticate challenges as needed")
     }
+
+    console.log({ challenges, codeGrantResponse })
 
     const tokens = await oauth.processAuthorizationCodeOAuth2Response(
       provider.authorizationServer,

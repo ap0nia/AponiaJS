@@ -63,7 +63,7 @@ export async function transformOAuthProvider(
 ): Promise<InternalOAuthConfig> {
   const providerOptions: OAuthUserConfig<any> = (provider as any).options
 
-  const authorizationServer = await getAuthorizationServer(provider, options)
+  const authorizationServer = { ...await getAuthorizationServer(provider, options) }
 
   const client: oauth.Client = {
     client_id: provider.clientId ?? providerOptions.clientId,
@@ -124,6 +124,10 @@ export async function transformOAuthProvider(
 
     return request
   }
+
+  authorizationServer.authorization_endpoint = authorizationUrl.toString()
+  authorizationServer.token_endpoint = tokenUrl.toString()
+  authorizationServer.userinfo_endpoint = userinfoUrl.toString()
 
   return {
     ...provider,
