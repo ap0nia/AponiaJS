@@ -11,17 +11,19 @@ import type { Provider as AponiaProvider } from "../providers"
 import type { InternalRequest, InternalResponse } from "./response"
 import type { SessionManagerConfig } from "../session"
 
-const skipCSRFCheck = Symbol("skip-csrf-check")
+const pages = [
+  'signIn',
+  'signOut',
+  'callback',
+  'session',
+  'error',
+  'verifyRequest',
+  'newUser'
+] as const
 
-interface PagesOptions {
-  signIn: string
-  signOut: string
-  callback: string
-  session: string
-  error: string
-  verifyRequest: string
-  newUser: string
-}
+type Pages = typeof pages[number]
+
+type PagesOptions = { [k in Pages]: string }
 
 export interface AuthConfig {
   providers?: Provider<any>[]
@@ -31,17 +33,9 @@ export interface AuthConfig {
   session?: Partial<SessionManagerConfig<any, any>>
 
   pages?: Partial<PagesOptions>
-
-  trustHost?: boolean
-
-  skipCSRFCheck?: typeof skipCSRFCheck
 }
 
 export interface InternalAuthConfig {
-  csrfToken?: string
-
-  csrfTokenVerified?: boolean
-
   secret: string
 
   session: SessionManager<any, any>
@@ -50,7 +44,7 @@ export interface InternalAuthConfig {
 }
 
 export class Auth {
-  private _config: AuthConfig
+  _userConfig: AuthConfig
 
   config: InternalAuthConfig
 
@@ -81,7 +75,7 @@ export class Auth {
 
     this.config = internalConfig
 
-    this._config = authOptions
+    this._userConfig = authOptions
 
     this.routes = {
       signin: new Map(),
@@ -95,7 +89,7 @@ export class Auth {
   }
 
   async initializeProviders() {
-    const providers = this._config.providers ?? []
+    const providers = this._userConfig.providers ?? []
 
     const internalProviderConfigs = await Promise.all(
       providers.map(provider => transformProviders(provider, this.config))

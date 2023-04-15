@@ -1,8 +1,8 @@
 import * as oauth from "oauth4webapi"
-import { encode, decode } from "$lib/jwt"
-import type { CookiesOptions } from "@auth/core/types"
+import { decode } from "$lib/jwt"
 import type { Cookie, InternalRequest } from "$lib/integrations/response"
 import type { AnyInternalOAuthConfig } from "$lib/providers"
+import { signCookie } from "./cookie"
 
 type CheckPayload =  { value: string }
 
@@ -137,24 +137,5 @@ export const nonce = {
 
     return [ value.value, cookie ] as const
   },
-}
-
-/** 
- * Returns a signed cookie.
- */
-export async function signCookie(
-  type: keyof CookiesOptions,
-  value: string,
-  maxAge: number,
-  provider: AnyInternalOAuthConfig
-): Promise<Cookie> {
-  return {
-    name: provider.cookies[type].name,
-    value: await encode({ ...provider.jwt, maxAge, token: { value } }),
-    options: { 
-      ...provider.cookies[type].options,
-      expires: new Date(Date.now() + maxAge * 1000)
-    },
-  }
 }
 
