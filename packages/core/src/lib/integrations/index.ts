@@ -1,4 +1,3 @@
-import { parse } from "cookie"
 import type { Provider } from "@auth/core/providers"
 import { decode } from "../jwt"
 import { transformProviders } from './providers'
@@ -25,6 +24,9 @@ type Pages = typeof pages[number]
 
 type PagesOptions = { [k in Pages]: string }
 
+/**
+ * User-provided config.
+ */
 export interface AuthConfig {
   providers?: Provider<any>[]
 
@@ -35,18 +37,15 @@ export interface AuthConfig {
   pages?: Partial<PagesOptions>
 }
 
-export interface InternalAuthConfig {
-  secret: string
+/**
+ * Aponia Auth!
+ */
+export class AponiaAuth {
+  userConfig: AuthConfig
 
   session: SessionManager<any, any>
 
   pages: PagesOptions
-}
-
-export class Auth {
-  _userConfig: AuthConfig
-
-  config: InternalAuthConfig
 
   providers: AponiaProvider[]
 
@@ -57,25 +56,25 @@ export class Auth {
   }
 
   constructor(authOptions: AuthConfig) {
-    const internalConfig: InternalAuthConfig = {
-      ...authOptions,
-
-      pages: {
-        signIn: authOptions.pages?.signIn ?? '/auth/login',
-        signOut: authOptions.pages?.signOut ?? '/auth/logout',
-        callback: authOptions.pages?.callback ?? '/auth/callback',
-        session: authOptions.pages?.session ?? '/auth/session',
-        error: authOptions.pages?.error ?? '/auth/error',
-        verifyRequest: authOptions.pages?.verifyRequest ?? '/auth/verify-request',
-        newUser: authOptions.pages?.newUser ?? '/auth/new-user',
-      },
-
-      session: new SessionManager(authOptions.session ?? {}),
+    this.pages = {
+      signIn: authOptions.pages?.signIn ?? '/auth/login',
+      signOut: authOptions.pages?.signOut ?? '/auth/logout',
+      callback: authOptions.pages?.callback ?? '/auth/callback',
+      session: authOptions.pages?.session ?? '/auth/session',
+      error: authOptions.pages?.error ?? '/auth/error',
+      verifyRequest: authOptions.pages?.verifyRequest ?? '/auth/verify-request',
+      newUser: authOptions.pages?.newUser ?? '/auth/new-user',
     }
 
-    this.config = internalConfig
+    this.session = new SessionManager({
+      ...authOptions.session,
+      jwt: {
+        secret: authOptions.secret,
+        ...authOptions.session?.jwt,
+      }
+    })
 
-    this._userConfig = authOptions
+    this.userConfig = authOptions
 
     this.routes = {
       signin: new Map(),
@@ -89,10 +88,10 @@ export class Auth {
   }
 
   async initializeProviders() {
-    const providers = this._userConfig.providers ?? []
+    const providers = this.userConfig.providers ?? []
 
     const internalProviderConfigs = await Promise.all(
-      providers.map(provider => transformProviders(provider, this.config))
+      providers.map(provider => transformProviders(provider, this))
     )
 
     const internalProviders = await Promise.all(
@@ -126,10 +125,10 @@ export class Auth {
      * Static routes.
      */
     switch (pathname) {
-      case this.config.pages.session:
-        const sessionToken = request.cookies[this.config.session.cookies.sessionToken.name]
-        const session = await decode({ secret: this.config.secret, token: sessionToken })
-        console.log('session! ', session)
+      case this.pages.session:
+        const sessionToken = request.cookies[this.session.cookies.sessionToken.name]
+        const body = await decode({ secret: this.session.secret, token: sessionToken })
+        return { body }
     }
 
     const signinHandler = this.routes.signin.get(pathname)
@@ -148,9 +147,4 @@ export class Auth {
   }
 }
 
-export async function toInternalRequest(request: Request): Promise<InternalRequest> {
-  const url = new URL(request.url)
-  const cookies = parse(request.headers.get("Cookie") ?? "")
-  return { ...request, url, cookies }
-}
-
+export default AponiaAuth

@@ -1,4 +1,5 @@
 import * as oauth from 'oauth4webapi'
+import type { Profile, TokenSet } from '@auth/core/types'
 import type { 
   CredentialsConfig,
   EmailConfig,
@@ -14,13 +15,14 @@ import type {
   InternalEmailConfig,
   InternalOAuthConfig,
   InternalOIDCConfig 
-} from '$lib/providers'
-import type { Profile, TokenSet } from '@auth/core/types'
+} from '../providers'
+import type { AponiaAuth } from '.'
 
-// FIXME: this is circular-ish because integration entry point imports `transformProviders` from this file
-import type { InternalAuthConfig } from '.'
-
-export async function transformProviders(provider: Provider, options: InternalAuthConfig): Promise<AnyInternalConfig> {
+/**
+ * @param provider Auth.js provider to transform to an internal Aponia Auth provider
+ * @param options The AponiaAuth instance.
+ */
+export async function transformProviders(provider: Provider, options: AponiaAuth): Promise<AnyInternalConfig> {
   switch (provider.type) {
     case 'oauth': 
       return transformOAuthProvider(provider, options)
@@ -35,7 +37,7 @@ export async function transformProviders(provider: Provider, options: InternalAu
 
 export async function transformOAuthProvider(
   provider: OAuth2Config<any>,
-  options: InternalAuthConfig
+  options: AponiaAuth
 ): Promise<InternalOAuthConfig> {
   const providerOptions: OAuthUserConfig<any> = (provider as any).options
 
@@ -136,7 +138,7 @@ export async function transformOAuthProvider(
 
 export async function transformOIDCProvider(
   provider: OIDCConfig<any>,
-  options: InternalAuthConfig
+  options: AponiaAuth
 ): Promise<InternalOIDCConfig> {
   const providerOptions: OAuthUserConfig<any> = (provider as any).options
 
@@ -233,7 +235,7 @@ export async function transformOIDCProvider(
 
 export async function transformEmailProvider(
   provider: EmailConfig,
-  options: InternalAuthConfig
+  options: AponiaAuth
 ): Promise<InternalEmailConfig> {
   return { 
     ...provider,
@@ -247,7 +249,7 @@ export async function transformEmailProvider(
 
 export async function transformCredentialsProvider(
   provider: CredentialsConfig,
-  options: InternalAuthConfig
+  options: AponiaAuth
 ): Promise<InternalCredentialsConfig> {
   return { 
     ...provider,
@@ -265,7 +267,7 @@ type MutableAuthorizationServer = {
 
 async function getAuthorizationServer(
   provider: OAuth2Config<any> | OIDCConfig<any>,
-  _options: InternalAuthConfig
+  _options: AponiaAuth
 ): Promise<MutableAuthorizationServer> {
   if (!provider.issuer) return { issuer: 'authjs.dev' }
 

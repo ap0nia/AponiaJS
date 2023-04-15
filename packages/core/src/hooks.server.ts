@@ -1,10 +1,12 @@
+import { json, redirect } from '@sveltejs/kit'
+import type { Handle } from '@sveltejs/kit'
 import GitHub from '@auth/core/providers/github'
 import Google from '@auth/core/providers/google'
-import { Auth, toInternalRequest } from '$lib/integrations'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
-import { redirect, type Handle } from '@sveltejs/kit'
+import { AponiaAuth } from './lib/integrations'
+import { toInternalRequest } from './lib/integrations/response'
 
-const auth = new Auth({
+const auth = new AponiaAuth({
   secret: 'secret',
   providers: [
     GitHub({ clientId: GITHUB_CLIENT_ID, clientSecret: GITHUB_CLIENT_SECRET }),
@@ -36,6 +38,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
     throw redirect(internalResponse.status, internalResponse.redirect)
+  }
+
+  if (internalResponse.body != null) {
+    return json(internalResponse.body)
   }
 
   return await resolve(event)

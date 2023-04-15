@@ -98,8 +98,6 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
       nonce,
     )
 
-    console.log({ result })
-
     if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
 
     const profile = oauth.getValidatedIdTokenClaims(result)

@@ -102,6 +102,11 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   cookies: InternalCookiesOptions
 
   /**
+   * Secret.
+   */
+  secret: string
+
+  /**
    * Whether to use secure cookies.
    */
   useSecureCookies: boolean
@@ -147,6 +152,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
     this.createSession = config.createSession ?? ((session) => ({ session } as any))
     this.cookies = { ...defaultCookies(config.useSecureCookies), ...config.cookies }
     this.useSecureCookies = config.useSecureCookies ?? false
+    this.secret = config.jwt?.secret ?? ''
   }
 
   /**
