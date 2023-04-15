@@ -81,6 +81,12 @@ export class Auth {
 
   providers: AponiaProvider[]
 
+  routes: {
+    signin: Map<string, AponiaProvider>
+    signout: Map<string, AponiaProvider>
+    callback: Map<string, AponiaProvider>
+  }
+
   constructor(authOptions: AuthConfig) {
     const internalConfig: InternalAuthConfig = {
       ...authOptions,
@@ -113,6 +119,12 @@ export class Auth {
 
     this._config = authOptions
 
+    this.routes = {
+      signin: new Map(),
+      signout: new Map(),
+      callback: new Map(),
+    }
+
     this.providers = []
 
     this.initializeProviders()
@@ -140,13 +152,32 @@ export class Auth {
       })
     )
 
+    internalProviders.forEach((provider) => {
+      this.routes.signin.set(provider.config.endpoints.signin, provider)
+      this.routes.signout.set(provider.config.endpoints.signout, provider)
+      this.routes.callback.set(provider.config.endpoints.callback, provider)
+    })
+
     this.providers = internalProviders
   }
 
   async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
-    const internalResponse = await this.providers[0].signIn(internalRequest)
-    return internalResponse
+    const { pathname } = internalRequest.url
+
+    const signinHandler = this.routes.signin.get(pathname)
+
+    if (signinHandler) return signinHandler.signIn(internalRequest)
+
+    const signoutHandler = this.routes.signout.get(pathname)
+
+    if (signoutHandler) return signoutHandler.signOut(internalRequest)
+
+    const callbackHandler = this.routes.callback.get(pathname)
+
+    if (callbackHandler) return callbackHandler.callback(internalRequest)
+
+    return {}
   }
 }
 

@@ -83,7 +83,7 @@ export async function transformOAuthProvider(
 
   const params = {
     response_type: "code",
-    client_id: provider.clientId ?? providerOptions.clientSecret,
+    client_id: provider.clientId ?? providerOptions.clientId,
     ...(typeof provider.authorization === 'object' && provider.authorization?.params),
   }
 
@@ -133,6 +133,11 @@ export async function transformOAuthProvider(
     jwt: options.jwt,
     checks: provider.checks ?? [],
     profile: provider.profile ?? defaultProfile,
+    endpoints: {
+      signin: `/auth/login/${provider.id}`,
+      signout: `/auth/logout/${provider.id}`,
+      callback: `/auth/callback/${provider.id}`
+    },
     authorization: { 
       url: authorizationUrl
     },
@@ -151,11 +156,13 @@ export async function transformOIDCProvider(
   provider: OIDCConfig<any>,
   options: ProviderOptions
 ): Promise<InternalOIDCConfig> {
+  const providerOptions: OAuthUserConfig<any> = (provider as any).options
+
   const authorizationServer = await getAuthorizationServer(provider, options)
 
   const client: oauth.Client = {
-    client_id: provider.clientId ?? '',
-    client_secret: provider.clientSecret ?? '',
+    client_id: provider.clientId ?? providerOptions.clientId,
+    client_secret: provider.clientSecret ?? providerOptions.clientSecret,
     ...provider.client,
   }
 
@@ -171,7 +178,7 @@ export async function transformOIDCProvider(
 
   const params = {
     response_type: "code",
-    client_id: provider.clientId,
+    client_id: provider.clientId ?? providerOptions.clientId,
     ...(typeof provider.authorization === 'object' && provider.authorization?.params),
   }
 
@@ -189,7 +196,7 @@ export async function transformOIDCProvider(
 
   if (!tokenUrl) throw new TypeError('Invalid token endpoint')
 
-  const tokenConform: InternalOAuthConfig['token']['conform'] = typeof provider.token === 'object'
+  const tokenConform: InternalOIDCConfig['token']['conform'] = typeof provider.token === 'object'
     ? (provider.token as any).conform
     : (response) => response
 
@@ -199,7 +206,8 @@ export async function transformOIDCProvider(
     ? new URL(authorizationServer.userinfo_endpoint)
     : new URL(`aponia:Dummy URL since OIDC doesn't need to make another userinfo request`)
 
-  const userinfoRequest: InternalOAuthConfig['userinfo']['request'] = async (context) => {
+
+  const userinfoRequest: InternalOIDCConfig['userinfo']['request'] = async (context) => {
     if (!context.tokens.access_token) throw new TypeError('Invalid token response')
 
     const request = typeof provider.userinfo === 'object' && provider.userinfo.request 
@@ -213,10 +221,15 @@ export async function transformOIDCProvider(
     ...provider,
     authorizationServer,
     client,
-    cookies: undefined as any,
-    jwt: undefined as any,
+    cookies: options.cookies,
+    jwt: options.jwt,
     checks: provider.checks ?? [],
-    profile: undefined as any,
+    profile: provider.profile ?? defaultProfile,
+    endpoints: {
+      signin: `/auth/login/${provider.id}`,
+      signout: `/auth/logout/${provider.id}`,
+      callback: `/auth/callback/${provider.id}`
+    },
     authorization: { 
       url: authorizationUrl
     },
@@ -235,14 +248,28 @@ export async function transformEmailProvider(
   provider: EmailConfig,
   _options: ProviderOptions
 ): Promise<InternalEmailConfig> {
-  return { ...provider }
+  return { 
+    ...provider,
+    endpoints: {
+      signin: `/auth/login/${provider.id}`,
+      signout: `/auth/logout/${provider.id}`,
+      callback: `/auth/callback/${provider.id}`
+    },
+  }
 }
 
 export async function transformCredentialsProvider(
   provider: CredentialsConfig,
   _options: ProviderOptions
 ): Promise<InternalCredentialsConfig> {
-  return { ...provider }
+  return { 
+    ...provider,
+    endpoints: {
+      signin: `/auth/login/${provider.id}`,
+      signout: `/auth/logout/${provider.id}`,
+      callback: `/auth/callback/${provider.id}`
+    },
+  }
 }
 
 

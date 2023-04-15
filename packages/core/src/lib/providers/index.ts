@@ -38,6 +38,12 @@ interface ProviderConfig {
    * @see {@link ProviderType}
    */
   type: ProviderType
+
+  endpoints: {
+    signin: string
+    signout: string
+    callback: string
+  }
 }
 
 /**
