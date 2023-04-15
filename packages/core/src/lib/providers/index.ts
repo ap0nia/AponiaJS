@@ -176,4 +176,3 @@ export interface Provider<T extends AnyInternalConfig = AnyInternalConfig> {
    */
   signOut(request: InternalRequest): Awaitable<InternalResponse>
 }
-

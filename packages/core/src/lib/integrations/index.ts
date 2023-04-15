@@ -1,9 +1,15 @@
-import type { Provider } from "@auth/core/providers"
-import { decode, encode, type JWTOptions } from "$lib/jwt"
+import { decode, encode } from "$lib/jwt"
+import type { JWTOptions } from "$lib/jwt"
 import type { Provider as AponiaProvider } from "$lib/providers"
 import { parse, type CookieSerializeOptions } from "cookie"
 import { defaultCookies } from "./cookie"
 import type { InternalRequest, InternalResponse } from "./response"
+import type { Provider } from "@auth/core/providers"
+import { transformProviders, type ProviderOptions } from './providers'
+import { OAuthProvider } from "$lib/providers/oauth"
+import { OIDCProvider } from "$lib/providers/oidc"
+import { CredentialsProvider } from "$lib/providers/credentials"
+import { EmailProvider } from "$lib/providers/email"
 // import type { CallbacksOptions, EventCallbacks } from "@auth/core/types"
 
 export const skipCSRFCheck = Symbol("skip-csrf-check")
@@ -67,8 +73,7 @@ export interface AuthConfig {
   // logger?: Partial<LoggerInstance>
 }
 
-export interface InternalAuthConfig {
-  providers: AponiaProvider[]
+export interface InternalAuthConfig extends ProviderOptions {
   csrfToken?: string
   csrfTokenVerified?: boolean
   secret: string
@@ -92,7 +97,11 @@ export interface InternalAuthConfig {
 const maxAge = 30 * 24 * 60 * 60 // Sessions expire after 30 days of being idle by default
 
 export class Auth {
+  private _config: AuthConfig
+
   config: InternalAuthConfig
+
+  providers: AponiaProvider[]
 
   constructor(authOptions: AuthConfig) {
     const internalConfig: InternalAuthConfig = {
@@ -104,8 +113,6 @@ export class Auth {
         ...defaultCookies(authOptions.useSecureCookies),
         ...authOptions.cookies,
       },
-
-      providers: [],
 
       session: {
         strategy: authOptions.session?.strategy ?? "jwt",
@@ -125,11 +132,38 @@ export class Auth {
     }
 
     this.config = internalConfig
+
+    this._config = authOptions
+
+    this.providers = []
+  }
+
+  async initializeProviders() {
+    const internalProviderConfigs = await Promise.all(
+      this._config.providers.map(provider => transformProviders(provider, this.config))
+    )
+
+    const internalProviders = await Promise.all(
+      internalProviderConfigs.map((config) => {
+        switch (config.type) {
+          case 'oauth':
+            return new OAuthProvider(config)
+          case 'oidc':
+            return new OIDCProvider(config)
+          case 'credentials':
+            return new CredentialsProvider(config)
+          case 'email':
+            return new EmailProvider(config)
+        }
+      })
+    )
+
+    this.providers = internalProviders
   }
 
   async handle(request: Request): Promise<Response> {
     const internalRequest = await toInternalRequest(request)
-    const internalResponse = await this.config.providers[0].signIn(internalRequest)
+    const internalResponse = await this.providers[0].signIn(internalRequest)
     const externalResponse = toExternalResponse(internalResponse)
     return externalResponse
   }

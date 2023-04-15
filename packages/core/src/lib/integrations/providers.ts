@@ -14,27 +14,27 @@ import type {
   InternalOIDCConfig 
 } from '$lib/providers'
 
-export async function transformProviders(provider: Provider): Promise<AnyInternalConfig> {
+export interface ProviderOptions {
+}
+
+export async function transformProviders(provider: Provider, options: ProviderOptions): Promise<AnyInternalConfig> {
   switch (provider.type) {
     case 'oauth': 
-      return transformOAuthProvider(provider)
-
+      return transformOAuthProvider(provider, options)
     case 'oidc':
-      return transformOIDCProvider(provider)
-
+      return transformOIDCProvider(provider, options)
     case 'email':
-      return transformEmailProvider(provider)
-
+      return transformEmailProvider(provider, options)
     case 'credentials':
-      return transformCredentialsProvider(provider)
-
-    default:
-      throw new TypeError(`Invalid provider type: ${JSON.stringify(provider)}`)
+      return transformCredentialsProvider(provider, options)
   }
 }
 
-export async function transformOAuthProvider(provider: OAuth2Config<any>): Promise<InternalOAuthConfig> {
-  const authorizationServer = await getAuthorizationServer(provider)
+export async function transformOAuthProvider(
+  provider: OAuth2Config<any>,
+  options: ProviderOptions
+): Promise<InternalOAuthConfig> {
+  const authorizationServer = await getAuthorizationServer(provider, options)
 
   const client: oauth.Client = {
     client_id: provider.clientId ?? '',
@@ -116,7 +116,10 @@ export async function transformOAuthProvider(provider: OAuth2Config<any>): Promi
   }
 }
 
-export async function transformOIDCProvider(provider: OIDCConfig<any>): Promise<InternalOIDCConfig> {
+export async function transformOIDCProvider(
+  provider: OIDCConfig<any>,
+  _options: ProviderOptions
+): Promise<InternalOIDCConfig> {
   return {
     ...provider,
     profile: undefined as any,
@@ -131,16 +134,25 @@ export async function transformOIDCProvider(provider: OIDCConfig<any>): Promise<
   }
 }
 
-export async function transformEmailProvider(provider: EmailConfig): Promise<InternalEmailConfig> {
+export async function transformEmailProvider(
+  provider: EmailConfig,
+  _options: ProviderOptions
+): Promise<InternalEmailConfig> {
   return { ...provider }
 }
 
-export async function transformCredentialsProvider(provider: CredentialsConfig): Promise<InternalCredentialsConfig> {
+export async function transformCredentialsProvider(
+  provider: CredentialsConfig,
+  _options: ProviderOptions
+): Promise<InternalCredentialsConfig> {
   return { ...provider }
 }
 
 
-async function getAuthorizationServer(provider: OAuth2Config<any> | OIDCConfig<any>): Promise<oauth.AuthorizationServer> {
+async function getAuthorizationServer(
+  provider: OAuth2Config<any> | OIDCConfig<any>,
+  _options: ProviderOptions
+): Promise<oauth.AuthorizationServer> {
   if (!provider.issuer) {
     return {
       issuer: 'authjs.dev',
