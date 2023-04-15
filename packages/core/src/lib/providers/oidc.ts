@@ -1,8 +1,8 @@
 import * as oauth from 'oauth4webapi'
-import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response'
-import * as checks from '$lib/integrations/check'
+import * as checks from '../check'
+import { encode } from '../jwt';
+import type { Cookie, InternalRequest, InternalResponse } from '../integrations/response'
 import type { Provider, InternalOIDCConfig } from '.';
-import { encode } from '$lib/jwt';
 
 
 export class OIDCProvider implements Provider<InternalOIDCConfig> {

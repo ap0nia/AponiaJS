@@ -111,8 +111,8 @@ export async function transformOAuthProvider(
     ...provider,
     authorizationServer,
     client,
-    cookies: options.cookies,
-    jwt: options.jwt,
+    cookies: options.session.cookies,
+    jwt: options.session.jwt,
     checks: provider.checks ?? ['pkce'],
     profile: provider.profile ?? defaultProfile,
     endpoints: {
@@ -208,8 +208,8 @@ export async function transformOIDCProvider(
     ...provider,
     authorizationServer,
     client,
-    cookies: options.cookies,
-    jwt: options.jwt,
+    cookies: options.session.cookies,
+    jwt: options.session.jwt,
     checks: provider.checks ?? ['pkce'],
     profile: provider.profile ?? defaultProfile,
     endpoints: {

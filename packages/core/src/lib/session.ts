@@ -1,22 +1,19 @@
 import { parse } from 'cookie'
-import { encode, decode } from '$lib/jwt'
-import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from '$lib/jwt'
+import { encode, decode } from './jwt'
+import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from './jwt'
+import { defaultCookies, type InternalCookiesOptions } from './cookie'
 
 type Awaitable<T> = T | PromiseLike<T>
-
-export const ACCESS_TOKEN_COOKIE_NAME = 'aponia-access'
-
-export const REFRESH_TOKEN_COOKIE_NAME = 'aponia-refresh'
 
 /**
  * Get session token from request cookies.
  */
-export function getTokens(request: Request) {
+export function getRequestTokens(request: Request, options: InternalCookiesOptions) {
   const cookies = parse(request.headers.get('cookie') ?? '')
 
-  const access_token = cookies[ACCESS_TOKEN_COOKIE_NAME] ?? null
+  const access_token = cookies[options.sessionToken.name]
 
-  const refresh_token = cookies[REFRESH_TOKEN_COOKIE_NAME] ?? null
+  const refresh_token = cookies[options.refreshToken.name]
 
   return { access_token, refresh_token }
 }
@@ -52,6 +49,16 @@ export interface SessionManagerConfig<TUser, TSession> {
   jwt?: JWTOptions
 
   /**
+   * Cookie options.
+   */
+  cookies?: Partial<InternalCookiesOptions>
+
+  /**
+   * Whether to use secure cookies.
+   */
+  useSecureCookies?: boolean
+
+  /**
    * Get the user from the session, i.e. retrieved from cookies.
    */
   getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
@@ -65,6 +72,12 @@ export interface SessionManagerConfig<TUser, TSession> {
    * Invalidate user's sessions, i.e. log the user out of all sessions.
    */
   invalidateUserSessions?: (userId: string) => Awaitable<void>
+
+  /**
+   * Create a session from a user ID, i.e. storing it in the database.
+   * Session can then be used to create a session token.
+   */
+  createSession?: (userId: string) => Awaitable<TSession>
 }
 
 /**
@@ -78,12 +91,20 @@ export interface SessionManagerConfig<TUser, TSession> {
  * 5. On subsequent requests, call `getRequestSession` to get the session from the request cookies.
  */
 export class SessionManager<TUser = {}, TSession extends Record<string, any> = Session> {
-  public static getSessionToken = getTokens
-
   /**
    * JWT configuration.
    */
   jwt: JWTOptions
+
+  /**
+   * Internal cookie configuration.
+   */
+  cookies: InternalCookiesOptions
+
+  /**
+   * Whether to use secure cookies.
+   */
+  useSecureCookies: boolean
 
   /**
    * Designated JWT encoder.
@@ -110,6 +131,12 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
    */
   invalidateUserSessions: (userId: string) => Awaitable<void>
 
+  /**
+   * Create a session from a user ID, i.e. storing it in the database.
+   * Session can then be used to create a session token.
+   */
+  createSession: (userId: string) => Awaitable<TSession>
+
   constructor(config: SessionManagerConfig<TUser, TSession>) {
     this.jwt = config?.jwt ?? { secret: '' }
     this.encode = config.jwt?.encode ?? encode
@@ -117,15 +144,28 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
     this.getUserFromSession = config.getUserFromSession
     this.invalidateSession = config.invalidateSession ?? (() => {})
     this.invalidateUserSessions = config.invalidateUserSessions ?? (() => {})
+    this.createSession = config.createSession ?? ((session) => ({ session } as any))
+    this.cookies = { ...defaultCookies(config.useSecureCookies), ...config.cookies }
+    this.useSecureCookies = config.useSecureCookies ?? false
   }
 
+  /**
+   * Get tokens from request cookies.
+   */
+  getTokens(request: Request) {
+    return getRequestTokens(request, this.cookies)
+  }
+
+  /**
+   * Create a session token from a session, i.e. after creating one.
+   */
   async createSessionToken(session: TSession) {
     const token = await this.encode({ ...this.jwt, token: session })
     return token
   }
 
   async getRequestSession(request: Request) {
-    const { access_token } = SessionManager.getSessionToken(request)
+    const { access_token } = this.getTokens(request)
 
     if (access_token == null) return null
 

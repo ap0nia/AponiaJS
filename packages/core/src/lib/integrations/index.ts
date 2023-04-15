@@ -1,46 +1,17 @@
-import type { CookieSerializeOptions } from "cookie"
-import { decode, encode } from "$lib/jwt"
-import type { JWTOptions } from "$lib/jwt"
-import type { Provider as AponiaProvider } from "$lib/providers"
 import { parse } from "cookie"
-import { defaultCookies } from "./cookie"
-import type { InternalRequest, InternalResponse } from "./response"
 import type { Provider } from "@auth/core/providers"
+import { decode } from "../jwt"
 import { transformProviders } from './providers'
-import { OAuthProvider } from "$lib/providers/oauth"
-import { OIDCProvider } from "$lib/providers/oidc"
-import { CredentialsProvider } from "$lib/providers/credentials"
-import { EmailProvider } from "$lib/providers/email"
-// import type { CallbacksOptions, EventCallbacks } from "@auth/core/types"
+import { OAuthProvider } from "../providers/oauth"
+import { OIDCProvider } from "../providers/oidc"
+import { CredentialsProvider } from "../providers/credentials"
+import { EmailProvider } from "../providers/email"
+import { SessionManager } from "../session"
+import type { Provider as AponiaProvider } from "../providers"
+import type { InternalRequest, InternalResponse } from "./response"
+import type { SessionManagerConfig } from "../session"
 
-export const skipCSRFCheck = Symbol("skip-csrf-check")
-
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-interface CookieOption {
-  name: string
-  options: CookieSerializeOptions
-}
-
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-interface CookiesOptions {
-  sessionToken: CookieOption
-  callbackUrl: CookieOption
-  csrfToken: CookieOption
-  pkceCodeVerifier: CookieOption
-  state: CookieOption
-  nonce: CookieOption
-}
-
-interface Theme {
-  colorScheme?: "auto" | "dark" | "light"
-  logo?: string
-  brandColor?: string
-  buttonText?: string
-}
+const skipCSRFCheck = Symbol("skip-csrf-check")
 
 interface PagesOptions {
   signIn: string
@@ -54,51 +25,29 @@ interface PagesOptions {
 
 export interface AuthConfig {
   providers?: Provider<any>[]
-  secret: string
-  session?: {
-    strategy?: "jwt" | "database"
-    maxAge?: number
-    updateAge?: number
-    generateSessionToken?: () => string
-  }
-  jwt?: Partial<JWTOptions>
-  pages?: Partial<PagesOptions>
-  debug?: boolean
-  theme?: Theme
-  useSecureCookies?: boolean
-  cookies?: Partial<CookiesOptions>
-  trustHost?: boolean
-  skipCSRFCheck?: typeof skipCSRFCheck
 
-  // callbacks?: Partial<CallbacksOptions>
-  // events?: Partial<EventCallbacks>
-  // adapter?: Adapter
-  // logger?: Partial<LoggerInstance>
+  secret: string
+
+  session?: Partial<SessionManagerConfig<any, any>>
+
+  pages?: Partial<PagesOptions>
+
+  trustHost?: boolean
+
+  skipCSRFCheck?: typeof skipCSRFCheck
 }
 
 export interface InternalAuthConfig {
   csrfToken?: string
+
   csrfTokenVerified?: boolean
+
   secret: string
-  session: NonNullable<Required<AuthConfig["session"]>>
-  jwt: JWTOptions
-  cookies: CookiesOptions
+
+  session: SessionManager<any, any>
+
   pages: PagesOptions
-
-  // pages: Partial<PagesOptions>
-  // theme: Theme
-  // debug: boolean
-  // action: AuthAction
-  // provider: InternalProvider<TProviderType>
-  // adapter: Required<Adapter> | undefined
-  // logger: LoggerInstance
-  // url: URL
-  // callbackUrl: string
-  // events: Partial<EventCallbacks>
-  // callbacks: CallbacksOptions
 }
-
-const maxAge = 30 * 24 * 60 * 60 // Sessions expire after 30 days of being idle by default
 
 export class Auth {
   private _config: AuthConfig
@@ -127,28 +76,7 @@ export class Auth {
         newUser: authOptions.pages?.newUser ?? '/auth/new-user',
       },
 
-      secret: authOptions.secret ?? '',
-
-      cookies: {
-        ...defaultCookies(authOptions.useSecureCookies),
-        ...authOptions.cookies,
-      },
-
-      session: {
-        strategy: authOptions.session?.strategy ?? "jwt",
-        maxAge,
-        updateAge: 24 * 60 * 60,
-        generateSessionToken: () => crypto.randomUUID(),
-        ...authOptions.session,
-      },
-
-      jwt: {
-        secret: authOptions.secret ?? '',
-        maxAge: authOptions.session?.maxAge ?? maxAge,
-        encode,
-        decode,
-        ...authOptions.jwt,
-      },
+      session: new SessionManager(authOptions.session ?? {}),
     }
 
     this.config = internalConfig
@@ -205,7 +133,7 @@ export class Auth {
      */
     switch (pathname) {
       case this.config.pages.session:
-        const sessionToken = request.cookies[this.config.cookies.sessionToken.name]
+        const sessionToken = request.cookies[this.config.session.cookies.sessionToken.name]
         const session = await decode({ secret: this.config.secret, token: sessionToken })
         console.log('session! ', session)
     }

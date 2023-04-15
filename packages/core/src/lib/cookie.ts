@@ -1,4 +1,8 @@
-import type { CookiesOptions } from "@auth/core/types"
+import type { CookieOption, CookiesOptions } from "@auth/core/types"
+
+export interface InternalCookiesOptions extends CookiesOptions {
+  refreshToken: CookieOption
+}
 
 /**
  * Use secure cookies if the site uses HTTPS
@@ -10,10 +14,19 @@ import type { CookiesOptions } from "@auth/core/types"
  *
  * @TODO Review cookie settings (names, options)
  */
-export function defaultCookies(useSecureCookies: boolean = false): CookiesOptions {
+export function defaultCookies(useSecureCookies: boolean = false): InternalCookiesOptions {
   const cookiePrefix = useSecureCookies ? "__Secure-" : ""
   return {
     // default cookie options
+    refreshToken: {
+      name: `${cookiePrefix}next-auth.refresh-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
     sessionToken: {
       name: `${cookiePrefix}next-auth.session-token`,
       options: {
