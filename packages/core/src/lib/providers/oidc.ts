@@ -2,6 +2,7 @@ import * as oauth from 'oauth4webapi'
 import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response'
 import * as checks from '$lib/integrations/check'
 import type { Provider, InternalOIDCConfig } from '.';
+import { encode } from '$lib/jwt';
 
 
 export class OIDCProvider implements Provider<InternalOIDCConfig> {
@@ -105,7 +106,16 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
 
     const profileResult = await provider.profile(profile, result)
 
-    return { ...profileResult, cookies }
+    cookies.push({
+      name: provider.cookies.sessionToken.name,
+      value: await encode({ ...provider.jwt, token: profileResult }),
+      options: {
+        ...provider.cookies.sessionToken.options, 
+        maxAge: 30 * 24 * 60 * 60,
+      }
+    })
+
+    return { cookies }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
