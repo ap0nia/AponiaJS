@@ -1,7 +1,5 @@
 import type { CookieSerializeOptions } from 'cookie'
 
-type Override<Left, Right> = Omit<Left, keyof Right> & Right
-
 /**
  * Internally generated cookies.
  * @internal
@@ -24,7 +22,7 @@ export interface InternalResponse {
   cookies?: Cookie[]
 }
 
-export type InternalRequest = Override<Request, {
+export type InternalRequest = {
   url: URL
   cookies: Record<string, string>
-}>
+}

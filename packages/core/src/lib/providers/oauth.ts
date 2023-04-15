@@ -2,6 +2,7 @@ import * as oauth from 'oauth4webapi'
 import type { Cookie, InternalRequest, InternalResponse } from '$lib/integrations/response';
 import * as checks from '$lib/integrations/check'
 import type { Provider, InternalOAuthConfig } from '.'
+import { encode } from '$lib/jwt';
 
 
 export class OAuthProvider implements Provider <InternalOAuthConfig> {
@@ -19,7 +20,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     }
 
     if (provider.checks?.includes('pkce')) {
-      if (provider.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
+      if (!provider.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
         provider.checks = ['nonce']
       } else {
         const [pkce, pkceCookie] = await checks.pkce.create(provider)
@@ -36,7 +37,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     }
 
     if (!url.searchParams.has('redirect_uri')) {
-      url.searchParams.set('redirect_uri', `${request.url.origin}/auth/callback/${provider.id}`)
+      url.searchParams.set('redirect_uri', `${request.url.origin}${provider.endpoints.callback}`)
     }
 
     return { status: 302, redirect: url.toString(), cookies }
@@ -68,7 +69,7 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
       provider.authorizationServer,
       provider.client,
       codeGrantParams,
-      provider.endpoints.callback,
+      `${request.url.origin}${provider.endpoints.callback}`,
       pkce
     )
 
@@ -82,8 +83,6 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
       })
       throw new Error("TODO: Handle www-authenticate challenges as needed")
     }
-
-    console.log({ challenges, codeGrantResponse })
 
     const tokens = await oauth.processAuthorizationCodeOAuth2Response(
       provider.authorizationServer,
@@ -99,7 +98,16 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
 
     const profileResult = await provider.profile(profile, tokens)
 
-    return { ...profileResult, cookies }
+    cookies.push({
+      name: provider.cookies.sessionToken.name,
+      value: await encode({ ...provider.jwt, token: profileResult }),
+      options: {
+        ...provider.cookies.sessionToken.options, 
+        maxAge: 30 * 24 * 60 * 60,
+      }
+    })
+
+    return { cookies }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {

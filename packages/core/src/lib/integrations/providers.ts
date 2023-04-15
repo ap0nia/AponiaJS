@@ -1,5 +1,4 @@
 import * as oauth from 'oauth4webapi'
-import type { CookieSerializeOptions } from "cookie"
 import type { 
   CredentialsConfig,
   EmailConfig,
@@ -8,7 +7,6 @@ import type {
   OIDCConfig,
   Provider 
 } from '@auth/core/providers'
-import type { JWTOptions } from "$lib/jwt"
 import type {
   AnyInternalConfig,
   AnyInternalOAuthConfig,
@@ -19,32 +17,10 @@ import type {
 } from '$lib/providers'
 import type { Profile, TokenSet } from '@auth/core/types'
 
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-interface CookieOption {
-  name: string
-  options: CookieSerializeOptions
-}
+// FIXME: this is circular-ish because integration entry point imports `transformProviders` from this file
+import type { InternalAuthConfig } from '.'
 
-/** 
- * [Documentation](https://authjs.dev/reference/configuration/auth-config#cookies)
- */
-export interface CookiesOptions {
-  sessionToken: CookieOption
-  callbackUrl: CookieOption
-  csrfToken: CookieOption
-  pkceCodeVerifier: CookieOption
-  state: CookieOption
-  nonce: CookieOption
-}
-
-export interface ProviderOptions {
-  jwt: JWTOptions
-  cookies: CookiesOptions
-}
-
-export async function transformProviders(provider: Provider, options: ProviderOptions): Promise<AnyInternalConfig> {
+export async function transformProviders(provider: Provider, options: InternalAuthConfig): Promise<AnyInternalConfig> {
   switch (provider.type) {
     case 'oauth': 
       return transformOAuthProvider(provider, options)
@@ -59,11 +35,11 @@ export async function transformProviders(provider: Provider, options: ProviderOp
 
 export async function transformOAuthProvider(
   provider: OAuth2Config<any>,
-  options: ProviderOptions
+  options: InternalAuthConfig
 ): Promise<InternalOAuthConfig> {
   const providerOptions: OAuthUserConfig<any> = (provider as any).options
 
-  const authorizationServer = { ...await getAuthorizationServer(provider, options) }
+  const authorizationServer = await getAuthorizationServer(provider, options)
 
   const client: oauth.Client = {
     client_id: provider.clientId ?? providerOptions.clientId,
@@ -107,6 +83,8 @@ export async function transformOAuthProvider(
 
   const userinfoUrl = typeof provider.userinfo === 'string'
     ? new URL(provider.userinfo)
+    : provider.userinfo?.url
+    ? new URL(provider.userinfo.url)
     : authorizationServer.userinfo_endpoint
     ? new URL(authorizationServer.userinfo_endpoint)
     : provider.userinfo?.request
@@ -135,12 +113,12 @@ export async function transformOAuthProvider(
     client,
     cookies: options.cookies,
     jwt: options.jwt,
-    checks: provider.checks ?? [],
+    checks: provider.checks ?? ['pkce'],
     profile: provider.profile ?? defaultProfile,
     endpoints: {
-      signin: `/auth/login/${provider.id}`,
-      signout: `/auth/logout/${provider.id}`,
-      callback: `/auth/callback/${provider.id}`
+      signin: `${options.pages.signIn}/${provider.id}`,
+      signout: `${options.pages.signOut}/${provider.id}`,
+      callback: `${options.pages.callback}/${provider.id}`
     },
     authorization: { 
       url: authorizationUrl
@@ -158,7 +136,7 @@ export async function transformOAuthProvider(
 
 export async function transformOIDCProvider(
   provider: OIDCConfig<any>,
-  options: ProviderOptions
+  options: InternalAuthConfig
 ): Promise<InternalOIDCConfig> {
   const providerOptions: OAuthUserConfig<any> = (provider as any).options
 
@@ -206,6 +184,8 @@ export async function transformOIDCProvider(
 
   const userinfoUrl = typeof provider.userinfo === 'string'
     ? new URL(provider.userinfo)
+    : provider.userinfo?.url
+    ? new URL(provider.userinfo.url)
     : authorizationServer.userinfo_endpoint
     ? new URL(authorizationServer.userinfo_endpoint)
     : new URL(`aponia:Dummy URL since OIDC doesn't need to make another userinfo request`)
@@ -213,12 +193,15 @@ export async function transformOIDCProvider(
 
   const userinfoRequest: InternalOIDCConfig['userinfo']['request'] = async (context) => {
     if (!context.tokens.access_token) throw new TypeError('Invalid token response')
-
-    const request = typeof provider.userinfo === 'object' && provider.userinfo.request 
-    ? provider.userinfo.request(context)
-    : oauth.userInfoRequest(authorizationServer, client, context.tokens.access_token).then(res => res.json())
-
-    return request
+    try {
+      const request = typeof provider.userinfo === 'object' && provider.userinfo.request 
+      ? provider.userinfo.request(context)
+      : oauth.userInfoRequest(authorizationServer, client, context.tokens.access_token).then(res => res.json())
+      return request
+    } catch(e) {
+      console.log(`Error fetching userinfo: ${e}`)
+      return {}
+    }
   }
 
   return {
@@ -227,12 +210,12 @@ export async function transformOIDCProvider(
     client,
     cookies: options.cookies,
     jwt: options.jwt,
-    checks: provider.checks ?? [],
+    checks: provider.checks ?? ['pkce'],
     profile: provider.profile ?? defaultProfile,
     endpoints: {
-      signin: `/auth/login/${provider.id}`,
-      signout: `/auth/logout/${provider.id}`,
-      callback: `/auth/callback/${provider.id}`
+      signin: `${options.pages.signIn}/${provider.id}`,
+      signout: `${options.pages.signOut}/${provider.id}`,
+      callback: `${options.pages.callback}/${provider.id}`
     },
     authorization: { 
       url: authorizationUrl
@@ -250,54 +233,47 @@ export async function transformOIDCProvider(
 
 export async function transformEmailProvider(
   provider: EmailConfig,
-  _options: ProviderOptions
+  options: InternalAuthConfig
 ): Promise<InternalEmailConfig> {
   return { 
     ...provider,
     endpoints: {
-      signin: `/auth/login/${provider.id}`,
-      signout: `/auth/logout/${provider.id}`,
-      callback: `/auth/callback/${provider.id}`
+      signin: `${options.pages.signIn}/${provider.id}`,
+      signout: `${options.pages.signOut}/${provider.id}`,
+      callback: `${options.pages.callback}/${provider.id}`
     },
   }
 }
 
 export async function transformCredentialsProvider(
   provider: CredentialsConfig,
-  _options: ProviderOptions
+  options: InternalAuthConfig
 ): Promise<InternalCredentialsConfig> {
   return { 
     ...provider,
     endpoints: {
-      signin: `/auth/login/${provider.id}`,
-      signout: `/auth/logout/${provider.id}`,
-      callback: `/auth/callback/${provider.id}`
+      signin: `${options.pages.signIn}/${provider.id}`,
+      signout: `${options.pages.signOut}/${provider.id}`,
+      callback: `${options.pages.callback}/${provider.id}`
     },
   }
 }
 
+type MutableAuthorizationServer = {
+  -readonly [K in keyof oauth.AuthorizationServer]: oauth.AuthorizationServer[K]
+}
 
 async function getAuthorizationServer(
   provider: OAuth2Config<any> | OIDCConfig<any>,
-  _options: ProviderOptions
-): Promise<oauth.AuthorizationServer> {
-  if (!provider.issuer) {
-    return {
-      issuer: 'authjs.dev',
-    }
-  }
+  _options: InternalAuthConfig
+): Promise<MutableAuthorizationServer> {
+  if (!provider.issuer) return { issuer: 'authjs.dev' }
 
   const issuer = new URL(provider.issuer)
 
   const discoveryResponse = await oauth.discoveryRequest(issuer)
 
   const as = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
-
-  if (!as.authorization_endpoint) {
-    throw new TypeError(
-      "Authorization server did not provide an authorization endpoint."
-    )
-  }
 
   return as
 }
@@ -346,8 +322,7 @@ export async function getProfile(
 function defaultProfile(profile: any) {
   return {
     id: profile.sub ?? profile.id,
-    name:
-      profile.name ?? profile.nickname ?? profile.preferred_username ?? null,
+    name: profile.name ?? profile.nickname ?? profile.preferred_username ?? null,
     email: profile.email ?? null,
     image: profile.picture ?? null,
   }

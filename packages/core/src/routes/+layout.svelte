@@ -10,4 +10,7 @@
 <div>
   <a href="/auth/session">Get Session</a>
 </div>
+<div>
+  <a href="/">Home</a>
+</div>
 <slot />

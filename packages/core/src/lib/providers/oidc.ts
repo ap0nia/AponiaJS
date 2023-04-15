@@ -9,6 +9,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
 
   async signIn(request: InternalRequest): Promise<InternalResponse> {
     const provider = this.config
+
     const cookies: Cookie[] = []
     const { url } = provider.authorization
 
@@ -19,7 +20,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
     }
 
     if (provider.checks?.includes('pkce')) {
-      if (provider.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
+      if (!provider.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
         provider.checks = ['nonce']
       } else {
         const [pkce, pkceCookie] = await checks.pkce.create(provider)
@@ -36,14 +37,14 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
     }
 
     if (!url.searchParams.has('redirect_uri')) {
-      url.searchParams.set('redirect_uri', `${request.url.origin}/callback/${provider.id}`)
+      url.searchParams.set('redirect_uri', `${request.url.origin}${provider.endpoints.callback}`)
     }
 
     if (!url.searchParams.has('scope')) {
       url.searchParams.set("scope", "openid profile email")
     }
 
-    return { redirect: url.toString(), cookies }
+    return { status: 302, redirect: url.toString(), cookies }
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
@@ -58,7 +59,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
     const codeGrantParams = oauth.validateAuthResponse(
       provider.authorizationServer,
       provider.client,
-      provider.authorization.url.searchParams,
+      request.url.searchParams,
       state,
     )
 
@@ -72,7 +73,7 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
       provider.authorizationServer,
       provider.client,
       codeGrantParams,
-      'auth url',
+      `${request.url.origin}${provider.endpoints.callback}`,
       pkce,
     )
 
@@ -95,6 +96,8 @@ export class OIDCProvider implements Provider<InternalOIDCConfig> {
       codeGrantResponse,
       nonce,
     )
+
+    console.log({ result })
 
     if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
 
