@@ -81,13 +81,13 @@ export function defaultCookies(useSecureCookies: boolean = false): InternalCooki
 /** 
  * Returns a signed cookie.
  */
-export async function signCookie(cookie: CookieOption, value: string, jwtOptions: JWTOptions) {
+export async function signCookie(cookie: CookieOption, value: string, jwt: JWTOptions) {
   const signedCookie: Cookie = {
     name: cookie.name,
-    value: await encode({ ...jwtOptions, token: { value } }),
+    value: await encode({ ...jwt, token: { value } }),
     options: { 
       ...cookie.options,
-      expires: new Date(Date.now() + (jwtOptions.maxAge ?? 60) * 1000)
+      expires: new Date(Date.now() + (jwt.maxAge ?? 60) * 1000)
     },
   }
   return signedCookie

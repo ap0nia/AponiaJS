@@ -19,7 +19,9 @@ export interface Session {
 }
 
 export interface SessionManagerConfig<TUser, TSession> {
-  jwt?: JWTOptions
+  secret: string
+
+  jwt?: Omit<JWTOptions, 'secret'>
 
   useSecureCookies?: boolean
 
@@ -29,7 +31,7 @@ export interface SessionManagerConfig<TUser, TSession> {
 
   invalidateUserSessions?: (userId: string) => Awaitable<void>
 
-  createSession?: (userId: string) => Awaitable<TSession>
+  refreshSession?: (session: TSession) => Awaitable<TSession | null>
 }
 
 /**
@@ -81,19 +83,19 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   invalidateUserSessions: (userId: string) => Awaitable<void>
 
   /**
-   * Create a session.
+   * Refresh a session.
    */
-  createSession: (userId: string) => Awaitable<TSession>
+  refreshSession: (session: TSession, sessionToken: string) => Awaitable<TSession | null>
 
   constructor(config: SessionManagerConfig<TUser, TSession>) {
-    this.jwt = config?.jwt ?? { secret: '' }
+    this.jwt = { ...config.jwt, secret: config.secret }
     this.cookies = defaultCookies(config.useSecureCookies)
     this.encode = config.jwt?.encode ?? encode
     this.decode = config.jwt?.decode ?? decode
     this.getUserFromSession = config.getUserFromSession
     this.invalidateSession = config.invalidateSession ?? (() => {})
     this.invalidateUserSessions = config.invalidateUserSessions ?? (() => {})
-    this.createSession = config.createSession ?? ((session) => ({ session } as any))
+    this.refreshSession = config.refreshSession ?? (() => null)
   }
 
   /**
