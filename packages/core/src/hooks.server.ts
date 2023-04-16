@@ -4,17 +4,25 @@ import GitHub from '@auth/core/providers/github'
 import Google from '@auth/core/providers/google'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
 import { AponiaAuth } from './lib/integrations'
-import { toInternalRequest } from './lib/integrations/response'
+import { toInternalRequest } from './lib/integrations/request'
+import { OAuthProvider } from './lib/providers/oauth'
+import { OIDCProvider } from './lib/providers/oidc'
 
 const auth = new AponiaAuth({
   secret: 'secret',
   providers: [
-    GitHub({ clientId: GITHUB_CLIENT_ID, clientSecret: GITHUB_CLIENT_SECRET }),
-    Google({ clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET })
+    new OAuthProvider(
+      GitHub({ clientId: GITHUB_CLIENT_ID, clientSecret: GITHUB_CLIENT_SECRET })
+    ),
+    new OIDCProvider(
+      Google({ clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET })
+    )
   ]
 })
 
 export const handle: Handle = async ({ event, resolve }) => {
+  if (!auth.initialized) await auth.initialize()
+
   const internalRequest = await toInternalRequest(event.request)
   const internalResponse = await auth.handle(internalRequest)
 

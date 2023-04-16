@@ -1,39 +1,35 @@
 import * as oauth from "oauth4webapi"
-import { decode } from "$lib/jwt"
-import type { Cookie, InternalRequest } from "$lib/integrations/response"
-import type { AnyInternalOAuthConfig } from "$lib/providers"
+import { decode } from "./jwt"
 import { signCookie } from "./cookie"
+import type { Cookie } from "../integrations/response"
+import type { InternalRequest } from "../integrations/request"
+import type { OAuthProvider } from "../providers/oauth"
+import type { OIDCProvider } from "../providers/oidc"
 
 type CheckPayload =  { value: string }
 
-const PKCE_MAX_AGE = 60 * 15 // 15 minutes in seconds
+const PKCE_MAX_AGE = 60 * 15
+
+type AnyProvider = OAuthProvider<any, any> | OIDCProvider<any, any>
 
 export const pkce = {
-  async create(options: AnyInternalOAuthConfig) {
+  async create(options: AnyProvider) {
     const code_verifier = oauth.generateRandomCodeVerifier()
+
     const value = await oauth.calculatePKCECodeChallenge(code_verifier)
-    const maxAge = PKCE_MAX_AGE
+
     const cookie = await signCookie(
       "pkceCodeVerifier",
       code_verifier,
-      maxAge,
+      PKCE_MAX_AGE,
       options
     )
+
     return [ value, cookie ] as const
   },
 
-  /**
-   * Returns code_verifier if the provider is configured to use PKCE,
-   * and clears the container cookie afterwards.
-   * An error is thrown if the code_verifier is missing or invalid.
-   * @see https://www.rfc-editor.org/rfc/rfc7636
-   * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#pkce
-   */
-  async use(request: InternalRequest, provider: AnyInternalOAuthConfig) {
-    if (!provider.checks.includes("pkce")) {
-      // TODO: review fallback code verifier
-      return [ 'auth', null ] as const
-    }
+  async use(request: InternalRequest, provider: AnyProvider) {
+    if (!provider.config.checks.includes("pkce")) return [ 'auth', null ] as const
 
     const codeVerifier = request.cookies[provider.cookies.pkceCodeVerifier.name]
 
@@ -46,7 +42,6 @@ export const pkce = {
 
     if (!value?.value) throw new Error("PKCE code_verifier value could not be parsed.")
 
-    // Clear the pkce code verifier cookie after use
     const cookie: Cookie = {
       name: provider.cookies.pkceCodeVerifier.name,
       value: "",
@@ -57,38 +52,28 @@ export const pkce = {
   },
 }
 
-const STATE_MAX_AGE = 60 * 15 // 15 minutes in seconds
+const STATE_MAX_AGE = 60 * 15
 
 export const state = {
-  async create(provider: AnyInternalOAuthConfig) {
-    // TODO: support customizing the state
+  async create(provider: AnyProvider) {
     const value = oauth.generateRandomState()
+
     const cookie = await signCookie("state", value, STATE_MAX_AGE, provider)
+
     return [ value, cookie ] as const
   },
 
-  /**
-   * Returns state if the provider is configured to use state,
-   * and clears the container cookie afterwards.
-   * An error is thrown if the state is missing or invalid.
-   * @see https://www.rfc-editor.org/rfc/rfc6749#section-10.12
-   * @see https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1
-   */
-  async use(request: InternalRequest, provider: AnyInternalOAuthConfig) {
-    if (!provider.checks.includes('state')) {
-      return [ oauth.skipStateCheck, null ] as const
-    }
+  async use(request: InternalRequest, provider: AnyProvider) {
+    if (!provider.config.checks.includes('state')) return [ oauth.skipStateCheck, null ] as const
 
     const state = request.cookies[provider.cookies.state.name]
 
     if (!state) throw new Error("State cookie was missing.")
 
-    // IDEA: Let the user do something with the returned state
     const value = await decode<CheckPayload>({ ...provider.jwt, token: state })
 
     if (!value?.value) throw new Error("State value could not be parsed.")
 
-    // Clear the state cookie after use
     const cookie: Cookie = {
       name: provider.cookies.state.name,
       value: '',
@@ -99,26 +84,19 @@ export const state = {
   },
 }
 
-const NONCE_MAX_AGE = 60 * 15 // 15 minutes in seconds
+const NONCE_MAX_AGE = 60 * 15
 
 export const nonce = {
-  async create(provider: AnyInternalOAuthConfig) {
+  async create(provider: AnyProvider) {
     const value = oauth.generateRandomNonce()
+
     const cookie = await signCookie("nonce", value, NONCE_MAX_AGE, provider)
+
     return [ value, cookie ] as const
   },
 
-  /**
-   * Returns nonce if the provider is configured to use nonce,
-   * and clears the container cookie afterwards.
-   * An error is thrown if the nonce is missing or invalid.
-   * @see https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes
-   * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#nonce
-   */
-  async use(request: InternalRequest, provider: AnyInternalOAuthConfig) {
-    if (!provider.checks.includes('nonce')) {
-      return [ oauth.expectNoNonce, null ] as const
-    }
+  async use(request: InternalRequest, provider: AnyProvider) {
+    if (!provider.config.checks.includes('nonce')) return [ oauth.expectNoNonce, null ] as const
 
     const nonce = request.cookies[provider.cookies.nonce.name]
 
@@ -128,7 +106,6 @@ export const nonce = {
 
     if (!value?.value) throw new Error("Nonce value could not be parsed.")
 
-    // Clear the nonce cookie after use
     const cookie: Cookie = {
       name: provider.cookies.nonce.name,
       value: '',

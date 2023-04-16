@@ -1,79 +1,261 @@
 import * as oauth from 'oauth4webapi'
-import type { Cookie, InternalRequest, InternalResponse } from '../integrations/response';
-import * as checks from '../check'
-import { encode } from '../jwt';
-import type { Provider, InternalOAuthConfig } from '.'
+import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers'
+import type { Awaitable, CookiesOptions, TokenSet } from '@auth/core/types'
+import { encode } from '../security/jwt'
+import type { JWTOptions } from '../security/jwt'
+import type { Mutable } from '../utils/mutable'
+import { merge } from '../utils/merge'
+import { defaultProfile } from '../utils/profile'
+import type { InternalRequest } from '../integrations/request'
+import type { Cookie, InternalResponse } from '../integrations/response'
+import * as checks from '../security/checks'
+import { defaultCookies } from '$lib/security/cookie'
 
+interface Pages {
+  signIn: string
+  signOut: string
+  callback: string
+}
 
-export class OAuthProvider implements Provider <InternalOAuthConfig> {
-  constructor(readonly config: InternalOAuthConfig) {}
+type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-  async signIn(request: InternalRequest): Promise<InternalResponse> {
-    const provider = this.config
+type Callback<TProfile, TSession> = (
+  context: { user: TProfile, provider: OAuthProvider<TProfile, TSession> }
+) => Awaitable<TSession>
+
+type Callbacks<TProfile, TSession> = {
+  onSignIn: Callback<TProfile, TSession>
+  onSignOut: Callback<TProfile, TSession>
+}
+
+interface Options<TProfile, TSession> {
+  jwt: Partial<JWTOptions>
+  cookies: Partial<CookiesOptions>
+  useSecureCookies: boolean
+  callbacks: Callbacks<TProfile, TSession>
+  pages: Partial<Pages>
+}
+
+export class OAuthProvider<TProfile, TSession> {
+  initialized?: boolean
+
+  provider: OAuthConfig<any>
+
+  config: Required<OAuthConfig<TProfile>>
+
+  authorizationServer: Mutable<oauth.AuthorizationServer>
+
+  client: oauth.Client
+
+  cookies: CookiesOptions
+
+  callbacks: Callbacks<TProfile, TSession>
+
+  jwt: JWTOptions
+
+  pages: Pages
+
+  oauthFlow: {
+    authorization: { 
+      url: URL
+    }
+    token: {
+      url: URL
+      conform: (response: Response) => Awaitable<Response>
+    }
+    userinfo: {
+      url: URL
+      request: (context: { tokens: TokenSet, provider: OAuthConfig<any> }) => Awaitable<TProfile>
+    }
+  }
+
+  constructor(config: Config<TProfile>, options: Partial<Options<TProfile, TSession>> = {}) {
+    const placeholder = Object.create(null)
+
+    this.authorizationServer = placeholder
+    this.cookies = placeholder
+    this.jwt = placeholder
+    this.oauthFlow = placeholder
+    this.callbacks = placeholder
+
+    this.provider = config
+    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
+    this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
+
+    this.config = merge(config, config.options)
+    this.config.checks ??= ['pkce']
+    this.config.profile ??= defaultProfile
+
+    this.client = {
+      client_id: config.clientId ?? '',
+      client_secret: config.clientSecret ?? '',
+      ...config.client,
+    }
+
+    this.pages = {
+      signIn: options.pages?.signIn ?? `/auth/login/${config.id}`,
+      signOut: options.pages?.signOut ?? `/auth/logout/${config.id}`,
+      callback: options.pages?.callback ?? `/auth/callback/${config.id}`,
+    }
+  }
+
+  async initializeAuthorizationServer() {
+    if (!this.config.issuer) {
+      this.authorizationServer = { issuer: 'authjs.dev' }
+      return
+    }
+
+    const issuer = new URL(this.config.issuer)
+
+    const discoveryResponse = await oauth.discoveryRequest(issuer)
+
+    this.authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
+  }
+
+  async initialize(options: Partial<Options<TProfile, TSession>> = {}) {
+    await this.initializeAuthorizationServer()
+
+    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
+    this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
+
+    const authorizationUrl = typeof this.config.authorization === 'string' 
+      ? new URL(this.config.authorization) 
+      : this.config.authorization?.url
+      ? new URL(this.config.authorization.url)
+      : this.authorizationServer.authorization_endpoint
+      ? new URL(this.authorizationServer.authorization_endpoint)
+      : undefined
+
+    if (!authorizationUrl) throw new TypeError('Invalid authorization endpoint')
+
+    const params = {
+      response_type: "code",
+      client_id: this.config.clientId ?? '',
+      ...(typeof this.config.authorization === 'object' && this.config.authorization?.params),
+    }
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        authorizationUrl.searchParams.set(key, value)
+      }
+    })
+
+    const tokenUrl = typeof this.config.token === 'string' 
+      ? new URL(this.config.token)
+      : this.authorizationServer.token_endpoint
+      ? new URL(this.authorizationServer.token_endpoint)
+      : undefined
+
+    if (!tokenUrl) throw new TypeError('Invalid token endpoint')
+
+    const userinfoUrl = typeof this.config.userinfo === 'string'
+      ? new URL(this.config.userinfo)
+      : this.config.userinfo?.url
+      ? new URL(this.config.userinfo.url)
+      : this.authorizationServer.userinfo_endpoint
+      ? new URL(this.authorizationServer.userinfo_endpoint)
+      : this.config.userinfo?.request
+      ? new URL('placeholder-url:The provided request method will be used instead')
+      : undefined
+
+    if (!userinfoUrl) throw new TypeError('Invalid userinfo endpoint')
+
+    this.oauthFlow.authorization = { url: authorizationUrl }
+
+    this.oauthFlow.token = {
+      url: tokenUrl,
+      conform: typeof this.config.token === 'object' 
+        ? (this.config.token as any).conform 
+        : (response) => response
+    }
+
+    this.oauthFlow.userinfo = {
+      url: userinfoUrl,
+      request: async (context) => {
+        if (!context.tokens.access_token) throw new TypeError('Invalid token response')
+
+        const request = typeof this.config.userinfo === 'object' && this.config.userinfo.request 
+          ? this.config.userinfo.request(context)
+          : oauth.userInfoRequest(
+            this.authorizationServer,
+            this.client,
+            context.tokens.access_token
+          ).then(res => res.json())
+
+        return request
+      }
+    }
+
+    this.authorizationServer.authorization_endpoint = authorizationUrl.toString()
+    this.authorizationServer.token_endpoint = tokenUrl.toString()
+    this.authorizationServer.userinfo_endpoint = userinfoUrl.toString()
+
+    this.initialized = true
+  }
+
+   async signIn(request: InternalRequest): Promise<InternalResponse> {
     const cookies: Cookie[] = []
-    const { url } = provider.authorization
+    const { url } = this.oauthFlow.authorization
 
-    if (provider.checks?.includes('state')) {
-      const [state, stateCookie] = await checks.state.create(provider)
+    if (this.config.checks?.includes('state')) {
+      const [state, stateCookie] = await checks.state.create(this)
       url.searchParams.set('state', state)
       cookies.push(stateCookie)
     }
 
-    if (provider.checks?.includes('pkce')) {
-      if (!provider.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
-        provider.checks = ['nonce']
+    if (this.config.checks?.includes('pkce')) {
+      if (!this.authorizationServer.code_challenge_methods_supported?.includes('S256')) {
+        this.config.checks = ['nonce']
       } else {
-        const [pkce, pkceCookie] = await checks.pkce.create(provider)
+        const [pkce, pkceCookie] = await checks.pkce.create(this)
         url.searchParams.set('code_challenge', pkce)
         url.searchParams.set('code_challenge_method', 'S256')
         cookies.push(pkceCookie)
       }
     }
 
-    if (provider.checks?.includes('nonce')) {
-      const [nonce, nonceCookie] = await checks.nonce.create(provider)
+    if (this.config.checks?.includes('nonce')) {
+      const [nonce, nonceCookie] = await checks.nonce.create(this)
       url.searchParams.set('nonce', nonce)
       cookies.push(nonceCookie)
     }
 
     if (!url.searchParams.has('redirect_uri')) {
-      url.searchParams.set('redirect_uri', `${request.url.origin}${provider.endpoints.callback}`)
+      url.searchParams.set('redirect_uri', `${request.url.origin}${this.pages.callback}`)
     }
 
     return { status: 302, redirect: url.toString(), cookies }
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    const provider = this.config
-
     const cookies: Cookie[] = []
 
-    const [state, stateCookie] = await checks.state.use(request, provider)
+    const [state, stateCookie] = await checks.state.use(request, this)
 
     if (stateCookie) cookies.push(stateCookie)
 
     const codeGrantParams = oauth.validateAuthResponse(
-      provider.authorizationServer,
-      provider.client,
+      this.authorizationServer,
+      this.client,
       request.url.searchParams,
       state,
     )
 
     if (oauth.isOAuth2Error(codeGrantParams)) throw new Error(codeGrantParams.error_description)
 
-    const [pkce, pkceCookie] = await checks.pkce.use(request, provider)
+    const [pkce, pkceCookie] = await checks.pkce.use(request, this)
 
     if (pkceCookie) cookies.push(pkceCookie)
 
     const initialCodeGrantResponse = await oauth.authorizationCodeGrantRequest(
-      provider.authorizationServer,
-      provider.client,
+      this.authorizationServer,
+      this.client,
       codeGrantParams,
-      `${request.url.origin}${provider.endpoints.callback}`,
+      `${request.url.origin}${this.pages.callback}`,
       pkce
     )
 
-    const codeGrantResponse = await provider.token.conform(initialCodeGrantResponse.clone())
+    const codeGrantResponse = await this.oauthFlow.token.conform(initialCodeGrantResponse.clone())
 
     const challenges = oauth.parseWwwAuthenticateChallenges(codeGrantResponse)
 
@@ -85,24 +267,24 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     }
 
     const tokens = await oauth.processAuthorizationCodeOAuth2Response(
-      provider.authorizationServer,
-      provider.client,
+      this.authorizationServer,
+      this.client,
       codeGrantResponse,
     )
 
     if (oauth.isOAuth2Error(tokens)) throw new Error("TODO: Handle OAuth 2.0 response body error")
 
-    const profile = await provider.userinfo.request({ tokens, provider })
+    const profile = await this.oauthFlow.userinfo.request({ tokens, provider: this.provider })
 
     if (!profile) throw new Error("TODO: Handle missing profile")
 
-    const profileResult = await provider.profile(profile, tokens)
+    const profileResult = await this.config.profile(profile, tokens)
 
     cookies.push({
-      name: provider.cookies.sessionToken.name,
-      value: await encode({ ...provider.jwt, token: profileResult }),
+      name: this.cookies.sessionToken.name,
+      value: await encode({ ...this.jwt, token: profileResult }),
       options: {
-        ...provider.cookies.sessionToken.options, 
+        ...this.cookies.sessionToken.options, 
         maxAge: 30 * 24 * 60 * 60,
       }
     })
@@ -115,4 +297,3 @@ export class OAuthProvider implements Provider <InternalOAuthConfig> {
     return {}
   }
 }
-

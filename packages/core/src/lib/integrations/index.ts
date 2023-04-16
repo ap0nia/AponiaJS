@@ -1,91 +1,66 @@
-import type { Provider } from "@auth/core/providers"
-import { decode } from "../jwt"
-import { transformProviders } from './providers'
-import { OAuthProvider } from "../providers/oauth"
-import { OIDCProvider } from "../providers/oidc"
-import { CredentialsProvider } from "../providers/credentials"
-import { EmailProvider } from "../providers/email"
+import { decode } from "../security/jwt"
+import type { OAuthProvider } from "../providers/oauth"
+import type { OIDCProvider } from "../providers/oidc"
+// import { CredentialsProvider } from "../providers/credentials"
+// import { EmailProvider } from "../providers/email"
 import { SessionManager } from "../session"
-import type { Provider as AponiaProvider } from "../providers"
-import type { InternalRequest, InternalResponse } from "./response"
+import type { InternalResponse } from "./response"
+import type { InternalRequest } from "./request"
 import type { SessionManagerConfig } from "../session"
 
-type Awaitable<T> = T | PromiseLike<T>
+interface Pages {
+  signIn: string
+  signOut: string
+  callback: string
+  session: string
+}
 
-const pages = [
-  'signIn',
-  'signOut',
-  'callback',
-  'session',
-  'error',
-  'verifyRequest',
-  'newUser'
-] as const
+type AnyProvider = OAuthProvider<any, any> | OIDCProvider<any, any>
 
-type Pages = typeof pages[number]
-
-type PagesOptions = { [k in Pages]: string }
-
-/**
- * User-provided config.
- */
 export interface AuthConfig {
-  providers?: Provider<any>[]
-
-  callbacks?: {
-    onSignIn?: (request: InternalRequest) => Awaitable<void>
-    onSignOut?: (request: InternalRequest) => Awaitable<void>
-  }
-
+  providers?: AnyProvider[]
   secret: string
-
   session?: Partial<SessionManagerConfig<any, any>>
-
-  pages?: Partial<PagesOptions>
+  pages?: Partial<Pages>
 }
 
 /**
  * Aponia Auth!
  */
 export class AponiaAuth {
+  initialized?: boolean
+
   userConfig: AuthConfig
 
   session: SessionManager<any, any>
 
-  callbacks: AuthConfig['callbacks']
+  pages: Pages
 
-  pages: PagesOptions
-
-  providers: AponiaProvider[]
+  providers: AnyProvider[]
 
   routes: {
-    signin: Map<string, AponiaProvider>
-    signout: Map<string, AponiaProvider>
-    callback: Map<string, AponiaProvider>
+    signin: Map<string, AnyProvider>
+    signout: Map<string, AnyProvider>
+    callback: Map<string, AnyProvider>
   }
 
-  constructor(authOptions: AuthConfig) {
-    this.callbacks = authOptions.callbacks 
-
+  constructor(config: AuthConfig) {
     this.pages = {
-      signIn: authOptions.pages?.signIn ?? '/auth/login',
-      signOut: authOptions.pages?.signOut ?? '/auth/logout',
-      callback: authOptions.pages?.callback ?? '/auth/callback',
-      session: authOptions.pages?.session ?? '/auth/session',
-      error: authOptions.pages?.error ?? '/auth/error',
-      verifyRequest: authOptions.pages?.verifyRequest ?? '/auth/verify-request',
-      newUser: authOptions.pages?.newUser ?? '/auth/new-user',
+      signIn: config.pages?.signIn ?? '/auth/login',
+      signOut: config.pages?.signOut ?? '/auth/logout',
+      callback: config.pages?.callback ?? '/auth/callback',
+      session: config.pages?.session ?? '/auth/session',
     }
 
     this.session = new SessionManager({
-      ...authOptions.session,
+      ...config.session,
       jwt: {
-        secret: authOptions.secret,
-        ...authOptions.session?.jwt,
+        secret: config.secret,
+        ...config.session?.jwt,
       }
     })
 
-    this.userConfig = authOptions
+    this.userConfig = config
 
     this.routes = {
       signin: new Map(),
@@ -94,43 +69,29 @@ export class AponiaAuth {
     }
 
     this.providers = []
-
-    this.initializeProviders()
   }
 
-  async initializeProviders() {
-    const providers = this.userConfig.providers ?? []
+  async initialize() {
+    this.providers = await Promise.all(
+      this.userConfig.providers?.map(async (provider) => {
+        await provider.initialize({
+          ...this.userConfig,
+          jwt: { secret: this.userConfig.secret }
+        })
 
-    const internalProviderConfigs = await Promise.all(
-      providers.map(provider => transformProviders(provider, this))
+        this.routes.signin.set(provider.pages.signIn, provider)
+        this.routes.signout.set(provider.pages.signOut, provider)
+        this.routes.callback.set(provider.pages.callback, provider)
+
+        return provider
+      }) ?? []
     )
-
-    const internalProviders = await Promise.all(
-      internalProviderConfigs.map((config) => {
-        switch (config.type) {
-          case 'oauth':
-            return new OAuthProvider(config)
-          case 'oidc':
-            return new OIDCProvider(config)
-          case 'credentials':
-            return new CredentialsProvider(config)
-          case 'email':
-            return new EmailProvider(config)
-        }
-      })
-    )
-
-    internalProviders.forEach((provider) => {
-      this.routes.signin.set(provider.config.endpoints.signin, provider)
-      this.routes.signout.set(provider.config.endpoints.signout, provider)
-      this.routes.callback.set(provider.config.endpoints.callback, provider)
-    })
-
-    this.providers = internalProviders
 
     if (!this.providers.length) {
       throw new Error('No providers found')
     }
+
+    this.initialized = true
   }
 
   async handle(request: InternalRequest): Promise<InternalResponse> {
