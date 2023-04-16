@@ -6,7 +6,6 @@ import { defaultCookies, signCookie, type InternalCookiesOptions } from './secur
 
 export function getRequestTokens(request: Request, options: InternalCookiesOptions) {
   const cookies = parse(request.headers.get('cookie') ?? '')
-
   return {
     access_token: cookies[options.sessionToken.name],
     refresh_token: cookies[options.refreshToken.name],
@@ -21,11 +20,15 @@ export interface Session {
 
 export interface SessionManagerConfig<TUser, TSession> {
   jwt?: JWTOptions
-  cookies?: Partial<InternalCookiesOptions>
+
   useSecureCookies?: boolean
+
   getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
+
   invalidateSession?: (sessionId: string) => Awaitable<void>
+
   invalidateUserSessions?: (userId: string) => Awaitable<void>
+
   createSession?: (userId: string) => Awaitable<TSession>
 }
 
@@ -84,7 +87,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
 
   constructor(config: SessionManagerConfig<TUser, TSession>) {
     this.jwt = config?.jwt ?? { secret: '' }
-    this.cookies = { ...defaultCookies(config.useSecureCookies), ...config.cookies }
+    this.cookies = defaultCookies(config.useSecureCookies)
     this.encode = config.jwt?.encode ?? encode
     this.decode = config.jwt?.decode ?? decode
     this.getUserFromSession = config.getUserFromSession

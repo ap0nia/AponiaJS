@@ -33,7 +33,7 @@ export class AponiaAuth {
 
   userConfig: AuthConfig
 
-  session: SessionManager<any, any>
+  session: SessionManager
 
   pages: Pages
 
@@ -52,14 +52,6 @@ export class AponiaAuth {
       callback: config.pages?.callback ?? '/auth/callback',
       session: config.pages?.session ?? '/auth/session',
     }
-
-    this.session = new SessionManager({
-      cookies: defaultCookies(config.useSecureCookies),
-      jwt: {
-        ...config.jwt,
-        secret: config.secret,
-      }
-    })
 
     this.userConfig = config
 
