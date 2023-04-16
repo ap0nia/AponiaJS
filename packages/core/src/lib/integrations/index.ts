@@ -10,6 +10,8 @@ import type { Provider as AponiaProvider } from "../providers"
 import type { InternalRequest, InternalResponse } from "./response"
 import type { SessionManagerConfig } from "../session"
 
+type Awaitable<T> = T | PromiseLike<T>
+
 const pages = [
   'signIn',
   'signOut',
@@ -30,6 +32,11 @@ type PagesOptions = { [k in Pages]: string }
 export interface AuthConfig {
   providers?: Provider<any>[]
 
+  callbacks?: {
+    onSignIn?: (request: InternalRequest) => Awaitable<void>
+    onSignOut?: (request: InternalRequest) => Awaitable<void>
+  }
+
   secret: string
 
   session?: Partial<SessionManagerConfig<any, any>>
@@ -45,6 +52,8 @@ export class AponiaAuth {
 
   session: SessionManager<any, any>
 
+  callbacks: AuthConfig['callbacks']
+
   pages: PagesOptions
 
   providers: AponiaProvider[]
@@ -56,6 +65,8 @@ export class AponiaAuth {
   }
 
   constructor(authOptions: AuthConfig) {
+    this.callbacks = authOptions.callbacks 
+
     this.pages = {
       signIn: authOptions.pages?.signIn ?? '/auth/login',
       signOut: authOptions.pages?.signOut ?? '/auth/logout',
@@ -116,6 +127,10 @@ export class AponiaAuth {
     })
 
     this.providers = internalProviders
+
+    if (!this.providers.length) {
+      throw new Error('No providers found')
+    }
   }
 
   async handle(request: InternalRequest): Promise<InternalResponse> {
@@ -127,7 +142,7 @@ export class AponiaAuth {
     switch (pathname) {
       case this.pages.session:
         const sessionToken = request.cookies[this.session.cookies.sessionToken.name]
-        const body = await decode({ secret: this.session.secret, token: sessionToken })
+        const body = await decode({ secret: this.session.jwt.secret, token: sessionToken })
         return { body }
     }
 

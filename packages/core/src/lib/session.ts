@@ -102,16 +102,6 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   cookies: InternalCookiesOptions
 
   /**
-   * Secret.
-   */
-  secret: string
-
-  /**
-   * Whether to use secure cookies.
-   */
-  useSecureCookies: boolean
-
-  /**
    * Designated JWT encoder.
    */
   encode: (params: JWTEncodeParams) => Awaitable<string>
@@ -144,15 +134,13 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
 
   constructor(config: SessionManagerConfig<TUser, TSession>) {
     this.jwt = config?.jwt ?? { secret: '' }
+    this.cookies = { ...defaultCookies(config.useSecureCookies), ...config.cookies }
     this.encode = config.jwt?.encode ?? encode
     this.decode = config.jwt?.decode ?? decode
     this.getUserFromSession = config.getUserFromSession
     this.invalidateSession = config.invalidateSession ?? (() => {})
     this.invalidateUserSessions = config.invalidateUserSessions ?? (() => {})
     this.createSession = config.createSession ?? ((session) => ({ session } as any))
-    this.cookies = { ...defaultCookies(config.useSecureCookies), ...config.cookies }
-    this.useSecureCookies = config.useSecureCookies ?? false
-    this.secret = config.jwt?.secret ?? ''
   }
 
   /**

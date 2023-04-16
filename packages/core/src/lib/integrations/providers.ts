@@ -110,7 +110,11 @@ export async function transformOAuthProvider(
   authorizationServer.userinfo_endpoint = userinfoUrl.toString()
 
   return {
+    ...options,
     ...provider,
+    callbacks: {
+      ...options.callbacks
+    },
     authorizationServer,
     client,
     cookies: options.session.cookies,
@@ -207,7 +211,11 @@ export async function transformOIDCProvider(
   }
 
   return {
+    ...options,
     ...provider,
+    callbacks: {
+      ...options.callbacks
+    },
     authorizationServer,
     client,
     cookies: options.session.cookies,
@@ -238,6 +246,7 @@ export async function transformEmailProvider(
   options: AponiaAuth
 ): Promise<InternalEmailConfig> {
   return { 
+    ...options,
     ...provider,
     endpoints: {
       signin: `${options.pages.signIn}/${provider.id}`,
@@ -252,6 +261,7 @@ export async function transformCredentialsProvider(
   options: AponiaAuth
 ): Promise<InternalCredentialsConfig> {
   return { 
+    ...options,
     ...provider,
     endpoints: {
       signin: `${options.pages.signIn}/${provider.id}`,

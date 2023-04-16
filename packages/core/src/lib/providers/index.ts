@@ -126,6 +126,11 @@ export interface AnyInternalOAuthConfig<T extends OAuthProviderType = OAuthProvi
       context: { tokens: TokenSet, provider: InternalOAuthConfig | InternalOIDCConfig }
     ) => Awaitable<Profile>
   }
+
+  callbacks?: {
+    onSignIn?: (request: InternalRequest) => Awaitable<void>
+    onSignOut?: (request: InternalRequest) => Awaitable<void>
+  }
 }
 
 /**
