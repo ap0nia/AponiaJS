@@ -1,6 +1,6 @@
 import * as oauth from 'oauth4webapi'
 import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers'
-import type { Awaitable, CookiesOptions, TokenSet } from '@auth/core/types'
+import type { Awaitable, TokenSet } from '@auth/core/types'
 import { encode } from '../security/jwt'
 import type { JWTOptions } from '../security/jwt'
 import type { Mutable } from '../utils/mutable'
@@ -10,6 +10,7 @@ import type { InternalRequest } from '../integrations/request'
 import type { Cookie, InternalResponse } from '../integrations/response'
 import * as checks from '../security/checks'
 import { defaultCookies } from '$lib/security/cookie'
+import type { InternalCookiesOptions } from '$lib/security/cookie'
 
 interface Pages {
   signIn: string
@@ -19,37 +20,37 @@ interface Pages {
 
 type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-type Callback<TProfile, TSession> = (
-  context: { user: TProfile, provider: OAuthProvider<TProfile, TSession> }
-) => Awaitable<TSession>
+type Callback<T> = (
+  context: { request: InternalRequest, response: InternalResponse<T>, provider: OAuthProvider<T> }
+) => Awaitable<InternalResponse>
 
-type Callbacks<TProfile, TSession> = {
-  onSignIn: Callback<TProfile, TSession>
-  onSignOut: Callback<TProfile, TSession>
+type Callbacks<T> = {
+  onSignIn: Callback<T>
+  onSignOut: Callback<T>
 }
 
-interface Options<TProfile, TSession> {
+interface Options<T> {
   jwt: Partial<JWTOptions>
-  cookies: Partial<CookiesOptions>
+  cookies: Partial<InternalCookiesOptions>
   useSecureCookies: boolean
-  callbacks: Callbacks<TProfile, TSession>
+  callbacks: Callbacks<T>
   pages: Partial<Pages>
 }
 
-export class OAuthProvider<TProfile, TSession> {
+export class OAuthProvider<T> {
   initialized?: boolean
 
   provider: OAuthConfig<any>
 
-  config: Required<OAuthConfig<TProfile>>
+  config: Required<OAuthConfig<T>>
 
   authorizationServer: Mutable<oauth.AuthorizationServer>
 
   client: oauth.Client
 
-  cookies: CookiesOptions
+  cookies: InternalCookiesOptions
 
-  callbacks: Callbacks<TProfile, TSession>
+  callbacks: Callbacks<T>
 
   jwt: JWTOptions
 
@@ -65,19 +66,22 @@ export class OAuthProvider<TProfile, TSession> {
     }
     userinfo: {
       url: URL
-      request: (context: { tokens: TokenSet, provider: OAuthConfig<any> }) => Awaitable<TProfile>
+      request: (context: { tokens: TokenSet, provider: OAuthConfig<any> }) => Awaitable<T>
     }
   }
 
-  constructor(config: Config<TProfile>, options: Partial<Options<TProfile, TSession>> = {}) {
+  constructor(config: Config<T>, options: Partial<Options<T>> = {}) {
     const placeholder = Object.create(null)
 
     this.authorizationServer = placeholder
     this.cookies = placeholder
     this.jwt = placeholder
     this.oauthFlow = placeholder
-    this.callbacks = placeholder
 
+    this.callbacks = {
+      onSignIn: options.callbacks?.onSignIn ?? (({ response }) => response),
+      onSignOut: options.callbacks?.onSignOut ?? (({ response }) => response),
+    }
     this.provider = config
     this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
     this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
@@ -104,15 +108,12 @@ export class OAuthProvider<TProfile, TSession> {
       this.authorizationServer = { issuer: 'authjs.dev' }
       return
     }
-
     const issuer = new URL(this.config.issuer)
-
     const discoveryResponse = await oauth.discoveryRequest(issuer)
-
     this.authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
   }
 
-  async initialize(options: Partial<Options<TProfile, TSession>> = {}) {
+  async initialize(options: Partial<Options<T>> = {}) {
     await this.initializeAuthorizationServer()
 
     this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
@@ -289,11 +290,22 @@ export class OAuthProvider<TProfile, TSession> {
       }
     })
 
-    return { cookies }
+    const response = await this.callbacks.onSignIn({
+      request,
+      response: { data: profileResult as T, cookies },
+      provider: this
+    })
+
+    return response 
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    console.log("OAuthProvider.signOut not implemented ", request)
-    return {}
+    const response = await this.callbacks.onSignIn({
+      request,
+      response: {},
+      provider: this
+    })
+
+    return response 
   }
 }

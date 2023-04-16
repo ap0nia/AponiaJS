@@ -1,3 +1,6 @@
+/**
+ * Default OAuth profile extractor.
+ */
 export function defaultProfile(profile: any) {
   return {
     id: profile.sub ?? profile.id,

@@ -15,7 +15,7 @@ interface Pages {
   session: string
 }
 
-type AnyProvider = OAuthProvider<any, any> | OIDCProvider<any, any>
+type AnyProvider = OAuthProvider<any> | OIDCProvider<any>
 
 export interface AuthConfig {
   providers?: AnyProvider[]
@@ -108,16 +108,22 @@ export class AponiaAuth {
     }
 
     const signinHandler = this.routes.signin.get(pathname)
-
-    if (signinHandler) return signinHandler.signIn(request)
+    if (signinHandler) {
+      const response = await signinHandler.signIn(request)
+      return response
+    }
 
     const signoutHandler = this.routes.signout.get(pathname)
-
-    if (signoutHandler) return signoutHandler.signOut(request)
+    if (signoutHandler) {
+      const response = await signoutHandler.signOut(request)
+      return response
+    }
 
     const callbackHandler = this.routes.callback.get(pathname)
-
-    if (callbackHandler) return callbackHandler.callback(request)
+    if (callbackHandler) {
+      const response = await callbackHandler.callback(request)
+      return response
+    }
 
     return {}
   }

@@ -1,14 +1,8 @@
 import type { CookieOption, CookiesOptions } from "@auth/core/types"
 import type { Cookie } from "../integrations/response"
-import { encode } from "./jwt"
-import type { OAuthProvider } from "../providers/oauth"
-import type { OIDCProvider } from "../providers/oidc"
+import { encode, type JWTOptions } from "./jwt"
 
-type AnyProvider = OAuthProvider<any, any> | OIDCProvider<any, any>
-
-export interface InternalCookiesOptions extends CookiesOptions {
-  refreshToken: CookieOption
-}
+export interface InternalCookiesOptions extends CookiesOptions { refreshToken: CookieOption }
 
 export function defaultCookies(useSecureCookies: boolean = false): InternalCookiesOptions {
   const cookiePrefix = useSecureCookies ? "__Secure-" : ""
@@ -87,17 +81,16 @@ export function defaultCookies(useSecureCookies: boolean = false): InternalCooki
  * Returns a signed cookie.
  */
 export async function signCookie(
-  type: keyof CookiesOptions,
+  cookie: CookieOption,
   value: string,
-  maxAge: number,
-  provider: AnyProvider // AnyInternalOAuthConfig
+  jwtOptions: JWTOptions
 ): Promise<Cookie> {
   return {
-    name: provider.cookies[type].name,
-    value: await encode({ ...provider.jwt, maxAge, token: { value } }),
+    name: cookie.name,
+    value: await encode({ ...jwtOptions, token: { value } }),
     options: { 
-      ...provider.cookies[type].options,
-      expires: new Date(Date.now() + maxAge * 1000)
+      ...cookie.options,
+      expires: new Date(Date.now() + (jwtOptions.maxAge ?? 60) * 1000)
     },
   }
 }
