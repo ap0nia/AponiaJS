@@ -68,43 +68,43 @@ export class AponiaAuth {
       callback: new Map(),
     }
 
-    this.providers = []
+    this.providers = this.userConfig.providers ?? []
+
+    this.providers.forEach(provider => {
+      this.routes.signin.set(provider.pages.signIn, provider)
+      this.routes.signout.set(provider.pages.signOut, provider)
+      this.routes.callback.set(provider.pages.callback, provider)
+    })
   }
 
   async initialize() {
-    this.providers = await Promise.all(
-      this.userConfig.providers?.map(async (provider) => {
-        await provider.initialize({
-          ...this.userConfig,
-          jwt: { secret: this.userConfig.secret }
-        })
+    if (this.initialized) return
 
-        this.routes.signin.set(provider.pages.signIn, provider)
-        this.routes.signout.set(provider.pages.signOut, provider)
-        this.routes.callback.set(provider.pages.callback, provider)
-
-        return provider
-      }) ?? []
-    )
-
-    if (!this.providers.length) {
-      throw new Error('No providers found')
-    }
+    await Promise.all(this.providers.map(async (provider) => 
+      provider.initialize({
+        ...this.userConfig,
+        jwt: { secret: this.userConfig.secret }
+      })
+    ))
 
     this.initialized = true
   }
 
   async handle(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
+    const requestSession = await this.session.getRequestSession(request.request)
+    request.session = requestSession?.session
+    request.user = requestSession?.user
+
     const { pathname } = request.url
 
-    /**
-     * Static routes.
-     */
     switch (pathname) {
-      case this.pages.session:
+      case this.pages.session: {
         const sessionToken = request.cookies[this.session.cookies.sessionToken.name]
         const body = await decode({ secret: this.session.jwt.secret, token: sessionToken })
         return { body }
+      }
     }
 
     const signinHandler = this.routes.signin.get(pathname)

@@ -1,5 +1,5 @@
 import * as oauth from 'oauth4webapi'
-import type { OIDCConfig, OAuthConfig, OIDCUserConfig } from '@auth/core/providers'
+import type { OAuthConfig, OAuthUserConfig, OIDCConfig } from '@auth/core/providers'
 import type { Awaitable, TokenSet } from '@auth/core/types'
 import { encode, type JWTOptions } from '../security/jwt'
 import type { Mutable } from '../utils/mutable'
@@ -17,7 +17,7 @@ interface Pages {
   callback: string
 }
 
-type Config<T> = OIDCConfig<T> & { options?: OIDCUserConfig<T> }
+type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
 type Callback<T> = (
   context: { request: InternalRequest, response: InternalResponse<T>, provider: OIDCProvider<T> }
@@ -39,7 +39,7 @@ interface Options<T> {
 export class OIDCProvider<T> {
   initialized?: boolean
 
-  provider: OIDCConfig<any>
+  provider: OAuthConfig<any>
 
   config: Required<OAuthConfig<T>>
 
