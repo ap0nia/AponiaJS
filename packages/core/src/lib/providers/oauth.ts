@@ -20,20 +20,32 @@ interface Pages {
 
 type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-type Callback<T> = (
-  context: { request: InternalRequest, response: InternalResponse<T>, provider: OAuthProvider<T> }
-) => Awaitable<InternalResponse>
+type Callback<T> = (profile: T, tokens: TokenSet, provider: OAuthProvider<T>) => Awaitable<any>
 
 type Callbacks<T> = {
-  onSignIn: Callback<T>
-  onSignOut: Callback<T>
+  onSignIn?: Callback<T>
+  onSignOut?: Callback<T>
 }
 
 interface Options<T> {
+  /**
+   * JWT options for the provider.
+   */
   jwt: Partial<JWTOptions>
-  cookies: Partial<InternalCookiesOptions>
+
+  /**
+   * Whether to use secure cookies.
+   */
   useSecureCookies: boolean
+
+  /**
+   * Set the callbacks for the provider.
+   */
   callbacks: Callbacks<T>
+
+  /**
+   * Set the full page routes for the provider.
+   */
   pages: Partial<Pages>
 }
 
@@ -48,11 +60,11 @@ export class OAuthProvider<T> {
 
   client: oauth.Client
 
+  jwt: JWTOptions
+
   cookies: InternalCookiesOptions
 
   callbacks: Callbacks<T>
-
-  jwt: JWTOptions
 
   pages: Pages
 
@@ -70,37 +82,55 @@ export class OAuthProvider<T> {
     }
   }
 
-  constructor(config: Config<T>, options: Partial<Options<T>> = {}) {
-    const placeholder = Object.create(null)
-
-    this.authorizationServer = placeholder
-    this.cookies = placeholder
-    this.jwt = placeholder
-    this.oauthFlow = placeholder
+  constructor(provider: Config<T>, options: Partial<Options<T>> = {}) {
+    this.authorizationServer = Object.create(null)
+    this.oauthFlow = Object.create(null)
 
     this.callbacks = {
-      onSignIn: options.callbacks?.onSignIn ?? (({ response }) => response),
-      onSignOut: options.callbacks?.onSignOut ?? (({ response }) => response),
+      onSignIn: options.callbacks?.onSignIn ?? (() => {}),
+      onSignOut: options.callbacks?.onSignOut ?? (() => {}),
     }
-    this.provider = config
-    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
+
+    this.provider = provider
+
+    this.cookies = defaultCookies(options.useSecureCookies)
+
     this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
 
-    this.config = merge(config, config.options)
+    this.config = merge(provider, provider.options)
     this.config.checks ??= ['pkce']
     this.config.profile ??= defaultProfile
 
     this.client = {
-      client_id: config.clientId ?? '',
-      client_secret: config.clientSecret ?? '',
-      ...config.client,
+      client_id: provider.clientId ?? '',
+      client_secret: provider.clientSecret ?? '',
+      ...provider.client,
     }
 
     this.pages = {
-      signIn: options.pages?.signIn ?? `/auth/login/${config.id}`,
-      signOut: options.pages?.signOut ?? `/auth/logout/${config.id}`,
-      callback: options.pages?.callback ?? `/auth/callback/${config.id}`,
+      signIn: options.pages?.signIn ?? `/auth/login/${provider.id}`,
+      signOut: options.pages?.signOut ?? `/auth/logout/${provider.id}`,
+      callback: options.pages?.callback ?? `/auth/callback/${provider.id}`,
     }
+  }
+
+  /**
+   * Set the page prefixes for the provider. Doesn't set the full page.
+   */
+  setPagePrefixes(pages: Partial<Pages>) {
+    this.pages = {
+      signIn: `${pages.signIn ?? '/auth/login'}/${this.config.id}`,
+      signOut: `${pages.signOut ?? '/auth/logout'}/${this.config.id}`,
+      callback: `${pages.callback ?? '/auth/callback'}/${this.config.id}`
+    }
+  }
+
+  setCookiesOptions(options: InternalCookiesOptions) {
+    this.cookies = options
+  }
+
+  setJWTOptions(options: JWTOptions) {
+    this.jwt = options
   }
 
   async initializeAuthorizationServer() {
@@ -113,11 +143,8 @@ export class OAuthProvider<T> {
     this.authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
   }
 
-  async initialize(options: Partial<Options<T>> = {}) {
+  async initialize() {
     await this.initializeAuthorizationServer()
-
-    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
-    this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
 
     const authorizationUrl = typeof this.config.authorization === 'string' 
       ? new URL(this.config.authorization) 

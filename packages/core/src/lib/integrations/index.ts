@@ -1,4 +1,4 @@
-import { decode } from "../security/jwt"
+import { decode, type JWTOptions } from "../security/jwt"
 import type { OAuthProvider } from "../providers/oauth"
 import type { OIDCProvider } from "../providers/oidc"
 // import { CredentialsProvider } from "../providers/credentials"
@@ -6,7 +6,7 @@ import type { OIDCProvider } from "../providers/oidc"
 import { SessionManager } from "../session"
 import type { InternalResponse } from "./response"
 import type { InternalRequest } from "./request"
-import type { SessionManagerConfig } from "../session"
+import { defaultCookies } from "$lib/security/cookie"
 
 interface Pages {
   signIn: string
@@ -20,7 +20,8 @@ type AnyProvider = OAuthProvider<any> | OIDCProvider<any>
 export interface AuthConfig {
   providers?: AnyProvider[]
   secret: string
-  session?: Partial<SessionManagerConfig<any, any>>
+  useSecureCookies?: boolean
+  jwt: Partial<JWTOptions>
   pages?: Partial<Pages>
 }
 
@@ -53,10 +54,10 @@ export class AponiaAuth {
     }
 
     this.session = new SessionManager({
-      ...config.session,
+      cookies: defaultCookies(config.useSecureCookies),
       jwt: {
+        ...config.jwt,
         secret: config.secret,
-        ...config.session?.jwt,
       }
     })
 
@@ -80,12 +81,11 @@ export class AponiaAuth {
   async initialize() {
     if (this.initialized) return
 
-    await Promise.all(this.providers.map(async (provider) => 
-      provider.initialize({
-        ...this.userConfig,
-        jwt: { secret: this.userConfig.secret }
-      })
-    ))
+    await Promise.all(this.providers.map(async (provider) => {
+      provider.setJWTOptions(this.session.jwt)
+      provider.setCookiesOptions(this.session.cookies)
+      await provider.initialize()
+    }))
 
     this.initialized = true
   }

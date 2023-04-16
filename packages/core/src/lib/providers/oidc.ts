@@ -19,9 +19,7 @@ interface Pages {
 
 type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-type Callback<T> = (
-  context: { request: InternalRequest, response: InternalResponse<T>, provider: OIDCProvider<T> }
-) => Awaitable<InternalResponse>
+type Callback<T> = (profile: T, tokens: TokenSet, provider: OIDCProvider<T>) => Awaitable<any>
 
 type Callbacks<T> = {
   onSignIn: Callback<T>
@@ -29,10 +27,24 @@ type Callbacks<T> = {
 }
 
 interface Options<T> {
+  /**
+   * JWT options for the provider.
+   */
   jwt: Partial<JWTOptions>
-  cookies: Partial<InternalCookiesOptions>
+
+  /**
+   * Whether to use secure cookies.
+   */
   useSecureCookies: boolean
+
+  /**
+   * Set the callbacks for the provider.
+   */
   callbacks: Callbacks<T>
+
+  /**
+   * Set the full page routes for the provider.
+   */
   pages: Partial<Pages>
 }
 
@@ -69,33 +81,35 @@ export class OIDCProvider<T> {
     }
   }
 
-  constructor(config: Config<T>, options: Partial<Options<T>> = {}) {
-    const placeholder = Object.create(null)
+  constructor(provider: Config<T>, options: Partial<Options<T>> = {}) {
+    this.authorizationServer = Object.create(null)
+    this.oauthFlow = Object.create(null)
 
-    this.authorizationServer = placeholder
-    this.cookies = placeholder
-    this.jwt = placeholder
-    this.oauthFlow = placeholder
-    this.callbacks = placeholder
+    this.callbacks = {
+      onSignIn: options.callbacks?.onSignIn ?? (() => {}),
+      onSignOut: options.callbacks?.onSignOut ?? (() => {}),
+    }
 
-    this.provider = config
-    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
+    this.provider = provider
+
+    this.cookies = defaultCookies(options.useSecureCookies)
+
     this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
 
-    this.config = merge(config, config.options)
+    this.config = merge(provider, provider.options)
     this.config.checks ??= ['pkce']
     this.config.profile ??= defaultProfile
 
     this.client = {
-      client_id: config.clientId ?? '',
-      client_secret: config.clientSecret ?? '',
-      ...config.client,
+      client_id: provider.clientId ?? '',
+      client_secret: provider.clientSecret ?? '',
+      ...provider.client,
     }
 
     this.pages = {
-      signIn: options.pages?.signIn ?? `/auth/login/${config.id}`,
-      signOut: options.pages?.signOut ?? `/auth/logout/${config.id}`,
-      callback: options.pages?.callback ?? `/auth/callback/${config.id}`,
+      signIn: options.pages?.signIn ?? `/auth/login/${provider.id}`,
+      signOut: options.pages?.signOut ?? `/auth/logout/${provider.id}`,
+      callback: options.pages?.callback ?? `/auth/callback/${provider.id}`,
     }
   }
 
@@ -104,19 +118,32 @@ export class OIDCProvider<T> {
       this.authorizationServer = { issuer: 'authjs.dev' }
       return
     }
-
     const issuer = new URL(this.config.issuer)
-
     const discoveryResponse = await oauth.discoveryRequest(issuer)
-
     this.authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
   }
 
-  async initialize(options: Partial<Options<T>> = {}) {
-    await this.initializeAuthorizationServer()
+  /**
+   * Set the page prefixes for the provider. Doesn't set the full page.
+   */
+  setPagePrefixes(pages: Partial<Pages>) {
+    this.pages = {
+      signIn: `${pages.signIn ?? '/auth/login'}/${this.config.id}`,
+      signOut: `${pages.signOut ?? '/auth/logout'}/${this.config.id}`,
+      callback: `${pages.callback ?? '/auth/callback'}/${this.config.id}`
+    }
+  }
 
-    this.cookies = { ...defaultCookies(options.useSecureCookies), ...options.cookies }
-    this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
+  setCookiesOptions(options: InternalCookiesOptions) {
+    this.cookies = options
+  }
+
+  setJWTOptions(options: JWTOptions) {
+    this.jwt = options
+  }
+
+  async initialize() {
+    await this.initializeAuthorizationServer()
 
     const authorizationUrl = typeof this.config.authorization === 'string' 
       ? new URL(this.config.authorization) 
