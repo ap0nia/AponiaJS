@@ -4,7 +4,6 @@ import type { Awaitable, TokenSet } from '@auth/core/types'
 import * as checks from '../security/checks'
 import { merge } from '../utils/merge'
 import { defaultProfile } from '../utils/profile'
-import { defaultCookies } from '../security/cookie'
 import type { InternalCookiesOptions } from '../security/cookie'
 import type { JWTOptions } from '../security/jwt'
 import type { Mutable } from '../utils/mutable'
@@ -28,24 +27,9 @@ type Callbacks<T> = {
 
 interface Options<T> {
   /**
-   * JWT options for the provider.
-   */
-  jwt: Partial<JWTOptions>
-
-  /**
-   * Whether to use secure cookies.
-   */
-  useSecureCookies: boolean
-
-  /**
    * Set the callbacks for the provider.
    */
   callbacks: Callbacks<T>
-
-  /**
-   * Set the full page routes for the provider.
-   */
-  pages: Partial<Pages>
 }
 
 export class OIDCProvider<T> {
@@ -83,6 +67,9 @@ export class OIDCProvider<T> {
 
   constructor(provider: Config<T>, options: Partial<Options<T>> = {}) {
     this.authorizationServer = Object.create(null)
+    this.jwt = Object.create(null)
+    this.cookies = Object.create(null)
+    this.pages = Object.create(null)
     this.oauthFlow = Object.create(null)
 
     this.callbacks = {
@@ -90,26 +77,16 @@ export class OIDCProvider<T> {
       onSignOut: options.callbacks?.onSignOut ?? (() => {}),
     }
 
-    this.provider = provider
-
-    this.cookies = defaultCookies(options.useSecureCookies)
-
-    this.jwt = { ...options.jwt, secret: options.jwt?.secret ?? '' }
-
     this.config = merge(provider, provider.options)
     this.config.checks ??= ['pkce']
     this.config.profile ??= defaultProfile
+
+    this.provider = provider
 
     this.client = {
       client_id: provider.clientId ?? '',
       client_secret: provider.clientSecret ?? '',
       ...provider.client,
-    }
-
-    this.pages = {
-      signIn: options.pages?.signIn ?? `/auth/login/${provider.id}`,
-      signOut: options.pages?.signOut ?? `/auth/logout/${provider.id}`,
-      callback: options.pages?.callback ?? `/auth/callback/${provider.id}`,
     }
   }
 
@@ -123,10 +100,7 @@ export class OIDCProvider<T> {
     this.authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
   }
 
-  /**
-   * Set the page prefixes for the provider. Doesn't set the full page.
-   */
-  setPagePrefixes(pages: Partial<Pages>) {
+  setPages(pages: Partial<Pages>) {
     this.pages = {
       signIn: `${pages.signIn ?? '/auth/login'}/${this.config.id}`,
       signOut: `${pages.signOut ?? '/auth/logout'}/${this.config.id}`,
@@ -294,6 +268,6 @@ export class OIDCProvider<T> {
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    return {} 
+    return { body: request.session } 
   }
 }

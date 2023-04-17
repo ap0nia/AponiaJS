@@ -3,12 +3,12 @@ import type { Handle } from '@sveltejs/kit'
 import GitHub from '@auth/core/providers/github'
 import Google from '@auth/core/providers/google'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
-import { AponiaAuth } from './lib/internal'
+import { Auth } from './lib/internal'
 import { OAuthProvider } from './lib/providers/oauth'
 import { OIDCProvider } from './lib/providers/oidc'
 import { SessionManager } from '$lib/session'
 
-const auth = new AponiaAuth({
+const auth = new Auth({
   session: new SessionManager({ secret: 'secret' }),
   providers: [
     new OAuthProvider(

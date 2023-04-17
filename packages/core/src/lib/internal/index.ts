@@ -1,4 +1,3 @@
-import { decode } from "../security/jwt"
 // import { CredentialsProvider } from "../providers/credentials"
 // import { EmailProvider } from "../providers/email"
 import { toInternalRequest } from "./request"
@@ -42,7 +41,7 @@ export interface AuthConfig {
 /**
  * Aponia Auth!
  */
-export class AponiaAuth {
+export class Auth {
   /**
    * Whether the auth instance has been fully initialized.
    */
@@ -93,7 +92,7 @@ export class AponiaAuth {
     this.providers.forEach(provider => {
       provider.setJWTOptions(this.session.jwt)
       provider.setCookiesOptions(this.session.cookies)
-      provider.setPagePrefixes(this.pages)
+      provider.setPages(this.pages)
 
       this.routes.signin.set(provider.pages.signIn, provider)
       this.routes.signout.set(provider.pages.signOut, provider)
@@ -128,9 +127,7 @@ export class AponiaAuth {
 
     switch (pathname) {
       case this.pages.session: {
-        const sessionToken = internalRequest.cookies[this.session.cookies.sessionToken.name]
-        const body = await decode({ secret: this.session.jwt.secret, token: sessionToken })
-        return { body }
+        return { body: internalRequest.session }
       }
     }
 
@@ -171,4 +168,4 @@ export class AponiaAuth {
   }
 }
 
-export default AponiaAuth
+export default Auth
