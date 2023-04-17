@@ -1,10 +1,10 @@
 import type { Awaitable } from '@auth/core/types'
-import { encode, decode } from './security/jwt'
-import { defaultCookies } from './security/cookie'
-import type { InternalCookiesOptions } from './security/cookie'
-import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from './security/jwt'
-import type { InternalRequest } from './internal/request'
-import type { InternalCookie, InternalResponse } from './internal/response'
+import { encode, decode } from '../security/jwt'
+import { defaultCookies } from '../security/cookie'
+import type { InternalCookiesOptions } from '../security/cookie'
+import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from '../security/jwt'
+import type { InternalRequest } from '../internal/request'
+import type { InternalCookie, InternalResponse } from '../internal/response'
 
 export interface SessionManagerConfig<TUser, TSession> {
   secret: string

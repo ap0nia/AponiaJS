@@ -1,0 +1,19 @@
+{
+  "name": "@examples/sveltekit",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@auth/core": "^0.5.1",
+    "aponia": "*"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^1.15.5",
+    "svelte": "^3.58.0",
+    "svelte-check": "^3.2.0",
+    "typescript": "^5.0.4",
+    "vite": "^4.2.1"
+  }
+}

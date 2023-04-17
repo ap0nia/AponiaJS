@@ -1,7 +1,7 @@
-import { JWTOptions } from "@auth/core/jwt";
-import { InternalRequest } from "../internal/request";
-import { InternalResponse } from "../internal/response";
-import { InternalCookiesOptions } from "../security/cookie";
+import type { JWTOptions } from '../security/jwt'
+import type { InternalRequest } from "../internal/request";
+import type { InternalResponse } from "../internal/response";
+import type { InternalCookiesOptions } from "../security/cookie";
 
 interface Pages {
   signIn: string

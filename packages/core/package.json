@@ -1,7 +1,20 @@
 {
-  "name": "@aponiajs/core",
+  "name": "aponia",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "dependencies": {
     "@panva/hkdf": "^1.0.4",
