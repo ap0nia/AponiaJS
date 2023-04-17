@@ -1,5 +1,5 @@
-// import { CredentialsProvider } from "../providers/credentials"
-// import { EmailProvider } from "../providers/email"
+import { CredentialsProvider } from "../providers/credentials"
+import { EmailProvider } from "../providers/email"
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
 import type { SessionManager } from "../session"
@@ -16,7 +16,11 @@ interface Pages {
   session: string
 }
 
-type AnyProvider = OAuthProvider<any> | OIDCProvider<any>
+type AnyProvider = 
+  | OAuthProvider<any> 
+  | OIDCProvider<any> 
+  | CredentialsProvider<any> 
+  | EmailProvider<any>
 
 /**
  * Configuration.

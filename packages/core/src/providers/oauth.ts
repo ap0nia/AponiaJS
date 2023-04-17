@@ -33,6 +33,8 @@ interface Options<T> {
 }
 
 export class OAuthProvider<T> {
+  type = 'oauth' as const
+
   initialized?: boolean
 
   config: Required<OAuthConfig<T>>
@@ -47,9 +49,9 @@ export class OAuthProvider<T> {
 
   cookies: InternalCookiesOptions
 
-  callbacks: Callbacks<T>
-
   pages: Pages
+
+  callbacks: Callbacks<T>
 
   oauthFlow: {
     authorization: { 

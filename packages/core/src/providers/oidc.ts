@@ -33,6 +33,8 @@ interface Options<T> {
 }
 
 export class OIDCProvider<T> {
+  type = 'oidc' as const
+
   initialized?: boolean
 
   provider: OAuthConfig<any>
