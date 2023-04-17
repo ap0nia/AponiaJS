@@ -1,24 +1,10 @@
-import { parse } from 'cookie'
 import type { Awaitable } from '@auth/core/types'
 import { encode, decode } from './security/jwt'
-import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from './security/jwt'
 import { defaultCookies } from './security/cookie'
 import type { InternalCookiesOptions } from './security/cookie'
-import type { Cookie } from './integrations/response'
-
-export function getRequestTokens(request: Request, options: InternalCookiesOptions) {
-  const cookies = parse(request.headers.get('cookie') ?? '')
-  return {
-    access_token: cookies[options.sessionToken.name],
-    refresh_token: cookies[options.refreshToken.name],
-  }
-}
-
-export interface Session {
-  id: string;
-  user_id: string;
-  expires: number | bigint;
-}
+import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from './security/jwt'
+import type { InternalRequest } from './internal/request'
+import type { InternalCookie, InternalResponse } from './internal/response'
 
 export interface SessionManagerConfig<TUser, TSession> {
   secret: string
@@ -29,11 +15,9 @@ export interface SessionManagerConfig<TUser, TSession> {
 
   getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
 
-  invalidateSession?: (sessionId: string) => Awaitable<void>
+  onInvalidate?: (context: { session: TSession, user: TUser }) => Awaitable<InternalResponse<TUser, TSession> | void>
 
-  invalidateUserSessions?: (userId: string) => Awaitable<void>
-
-  refreshSession?: (session: TSession) => Awaitable<TSession | null>
+  onRefresh?: (context: { session: TSession, user: TUser }) => Awaitable<InternalResponse<TUser, TSession> | void>
 }
 
 /**
@@ -48,7 +32,12 @@ export interface SessionManagerConfig<TUser, TSession> {
  * 2. Call `getUserFromSession` to get the user.
  * 3. Share the user with other handlers.
  */
-export class SessionManager<TUser = {}, TSession extends Record<string, any> = Session> {
+export class SessionManager<TUser = {}, TSession extends Record<string, any> = {}> {
+  /**
+   * Secret.
+   */
+  secret: string
+
   /**
    * JWT options.
    */
@@ -71,40 +60,39 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
 
   /**
    * Get the user from the session.
+   * @default return the session itself.
    */
-  getUserFromSession?: (session: TSession) => Awaitable<TUser | null>
+  getUserFromSession: (session: TSession) => Awaitable<TUser | null>
 
   /**
    * Invalidate a session.
    */
-  invalidateSession: (sessionId: string) => Awaitable<void> 
-
-  /**
-   * Invalidate all sessions for a user.
-   */
-  invalidateUserSessions: (userId: string) => Awaitable<void>
+  onInvalidate: (context: { session: TSession, user: TUser }) => Awaitable<InternalResponse<TUser, TSession> | void> 
 
   /**
    * Refresh a session.
    */
-  refreshSession: (session: TSession, sessionToken: string) => Awaitable<TSession | null>
+  onRefresh: (context: { session: TSession, user: TUser }) => Awaitable<InternalResponse<TUser, TSession> | void>
 
   constructor(config: SessionManagerConfig<TUser, TSession>) {
+    this.secret = config.secret
     this.jwt = { ...config.jwt, secret: config.secret }
     this.cookies = defaultCookies(config.useSecureCookies)
     this.encode = config.jwt?.encode ?? encode
     this.decode = config.jwt?.decode ?? decode
-    this.getUserFromSession = config.getUserFromSession
-    this.invalidateSession = config.invalidateSession ?? (() => {})
-    this.invalidateUserSessions = config.invalidateUserSessions ?? (() => {})
-    this.refreshSession = config.refreshSession ?? (() => null)
+    this.getUserFromSession = config.getUserFromSession ?? ((session) => session as any)
+    this.onInvalidate = config.onInvalidate ?? (() => {})
+    this.onRefresh = config.onRefresh ?? (() => {})
   }
 
   /**
    * Get the tokens from the request, based on the provided cookie options.
    */
-  getTokens(request: Request) {
-    return getRequestTokens(request, this.cookies)
+  getTokens(request: InternalRequest) {
+    return {
+      access_token: request.cookies[this.cookies.sessionToken.name],
+      refresh_token: request.cookies[this.cookies.refreshToken.name],
+    }
   }
 
   /**
@@ -118,7 +106,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   /**
    * Create a session cookie.
    */
-  async createSessionCookie(session: TSession): Promise<Cookie> {
+  async createSessionCookie(session: TSession): Promise<InternalCookie> {
     return {
       name: this.cookies.sessionToken.name,
       value: await this.createSessionToken(session),
@@ -129,7 +117,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   /**
    * Get the session from the request.
    */
-  async getRequestSession(request: Request) {
+  async getRequestSession(request: InternalRequest) {
     const { access_token } = this.getTokens(request)
 
     if (!access_token) return null
@@ -138,8 +126,32 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
 
     if (!session) return null
 
-    const user = this.getUserFromSession?.(session) ?? null
+    const user = this.getUserFromSession(session)
 
     return { session, user }
+  }
+
+  /**
+   * Invalidate a session.
+   */
+  async invalidateSession(request: InternalRequest): Promise<InternalResponse> {
+    const userSession = request.session ?? await this.getRequestSession(request)
+    await this.onInvalidate(userSession)
+    return {
+      redirect: '/',
+      status: 302,
+      cookies: [
+        {
+          name: this.cookies.sessionToken.name,
+          value: '',
+          options: { maxAge: 0, path: '/' }
+        },
+        {
+          name: this.cookies.refreshToken.name,
+          value: '',
+          options: { maxAge: 0, path: '/' }
+        },
+      ],
+    }
   }
 }

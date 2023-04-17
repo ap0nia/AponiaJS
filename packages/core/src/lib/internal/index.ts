@@ -1,10 +1,9 @@
 import { decode } from "../security/jwt"
-import type { JWTOptions } from "../security/jwt"
 // import { CredentialsProvider } from "../providers/credentials"
 // import { EmailProvider } from "../providers/email"
-import { SessionManager } from "../session"
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
+import type { SessionManager } from "../session"
 import type { OAuthProvider } from "../providers/oauth"
 import type { OIDCProvider } from "../providers/oidc"
 
@@ -12,12 +11,9 @@ import type { OIDCProvider } from "../providers/oidc"
  * Designated auth pages.
  */
 interface Pages {
-  // Routes suffixed with provider ID.
   signIn: string
   signOut: string
   callback: string
-
-  // Static routes.
   session: string
 }
 
@@ -28,24 +24,14 @@ type AnyProvider = OAuthProvider<any> | OIDCProvider<any>
  */
 export interface AuthConfig {
   /**
-   * Secret used for JWT signing.
-   */
-  secret: string
-
-  /**
    * List of providers.
    */
-  providers?: AnyProvider[]
+  providers: AnyProvider[]
 
   /**
-   * Additional JWT options.
+   * Session.
    */
-  jwt?: Partial<Omit<JWTOptions, 'secret'>>
-
-  /**
-   * Whether to use secure cookies.
-   */
-  useSecureCookies?: boolean
+  session: SessionManager
 
   /**
    * Designated auth pages.
@@ -87,9 +73,9 @@ export class AponiaAuth {
   }
 
   constructor(config: AuthConfig) {
-    this.providers = config.providers ?? []
+    this.providers = config.providers
 
-    this.session = new SessionManager({ secret: config.secret, jwt: config.jwt })
+    this.session = config.session
 
     this.pages = {
       signIn: config.pages?.signIn ?? '/auth/login',
@@ -134,9 +120,9 @@ export class AponiaAuth {
 
     const internalRequest = await toInternalRequest(request)
 
-    const requestSession = await this.session.getRequestSession(request)
-    internalRequest.session = requestSession?.session
-    internalRequest.user = requestSession?.user
+    const userSession = await this.session.getRequestSession(internalRequest)
+    internalRequest.session = userSession?.session
+    internalRequest.user = userSession?.user
 
     const { pathname } = internalRequest.url
 
@@ -158,6 +144,9 @@ export class AponiaAuth {
     const signoutHandler = this.routes.signout.get(pathname)
     if (signoutHandler) {
       response = await signoutHandler.signOut(internalRequest)
+      if (internalRequest.session) {
+        await this.session.invalidateSession(internalRequest.session)
+      }
     }
 
     const callbackHandler = this.routes.callback.get(pathname)
@@ -168,7 +157,16 @@ export class AponiaAuth {
     if (response.session) {
       response.cookies ??= []
       response.cookies.push(await this.session.createSessionCookie(response.session))
+      response.user ??= await this.session.getUserFromSession(response.session)
     }
+
+    response.session ??= internalRequest.session
+    response.user ??= internalRequest.user
+
+    if (pathname.startsWith(this.pages.signOut)) {
+      response = { ...response, ...await this.session.invalidateSession(internalRequest) }
+    }
+
     return response
   }
 }

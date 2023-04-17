@@ -1,15 +1,15 @@
 import * as oauth from 'oauth4webapi'
 import type { OAuthConfig, OAuthUserConfig, OIDCConfig } from '@auth/core/providers'
 import type { Awaitable, TokenSet } from '@auth/core/types'
-import { encode, type JWTOptions } from '../security/jwt'
-import type { Mutable } from '../utils/mutable'
+import * as checks from '../security/checks'
 import { merge } from '../utils/merge'
 import { defaultProfile } from '../utils/profile'
-import type { InternalRequest } from '../integrations/request'
-import type { Cookie, InternalResponse } from '../integrations/response'
-import * as checks from '../security/checks'
-import { defaultCookies } from '$lib/security/cookie'
-import type { InternalCookiesOptions } from '$lib/security/cookie'
+import { defaultCookies } from '../security/cookie'
+import type { InternalCookiesOptions } from '../security/cookie'
+import type { JWTOptions } from '../security/jwt'
+import type { Mutable } from '../utils/mutable'
+import type { InternalRequest } from '../internal/request'
+import type { InternalCookie, InternalResponse } from '../internal/response'
 
 interface Pages {
   signIn: string
@@ -199,7 +199,7 @@ export class OIDCProvider<T> {
   }
 
    async signIn(request: InternalRequest): Promise<InternalResponse> {
-    const cookies: Cookie[] = []
+    const cookies: InternalCookie[] = []
     const { url } = this.oauthFlow.authorization
 
     if (this.config.checks?.includes('state')) {
@@ -237,7 +237,7 @@ export class OIDCProvider<T> {
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    const cookies: Cookie[] = []
+    const cookies: InternalCookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)
 

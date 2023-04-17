@@ -1,7 +1,4 @@
 import type { CookieOption, CookiesOptions } from "@auth/core/types"
-import type { Cookie } from "../integrations/response"
-import { encode } from "./jwt"
-import type { JWTOptions } from "./jwt"
 
 export interface InternalCookiesOptions extends CookiesOptions { refreshToken: CookieOption }
 
@@ -76,20 +73,5 @@ export function defaultCookies(useSecureCookies: boolean = false): InternalCooki
       },
     },
   }
-}
-
-/** 
- * Returns a signed cookie.
- */
-export async function signCookie(cookie: CookieOption, value: string, jwt: JWTOptions) {
-  const signedCookie: Cookie = {
-    name: cookie.name,
-    value: await encode({ ...jwt, token: { value } }),
-    options: { 
-      ...cookie.options,
-      expires: new Date(Date.now() + (jwt.maxAge ?? 60) * 1000)
-    },
-  }
-  return signedCookie
 }
 

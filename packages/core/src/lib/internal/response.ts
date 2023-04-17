@@ -4,7 +4,7 @@ import type { CookieSerializeOptions } from 'cookie'
  * Internally generated cookies.
  * @internal
  */
-export interface Cookie {
+export interface InternalCookie {
   name: string
   value: string
   options?: CookieSerializeOptions
@@ -14,13 +14,12 @@ export interface Cookie {
  * Internal Response.
  * @internal
  */
-export interface InternalResponse {
+export interface InternalResponse<TUser = any, TSession = any> {
+  session?: TSession
+  user?: TUser
   status?: number
-  headers?: Headers | HeadersInit
-  session?: any 
-  user?: any
-  body?: any
   redirect?: string
-  cookies?: Cookie[]
+  cookies?: InternalCookie[]
+  body?: any
   error?: any
 }

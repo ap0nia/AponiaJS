@@ -1,15 +1,15 @@
-import { json, redirect } from '@sveltejs/kit'
+import { redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
 import GitHub from '@auth/core/providers/github'
 import Google from '@auth/core/providers/google'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
-import { AponiaAuth } from './lib/integrations'
-import { toInternalRequest } from './lib/integrations/request'
+import { AponiaAuth } from './lib/internal'
 import { OAuthProvider } from './lib/providers/oauth'
 import { OIDCProvider } from './lib/providers/oidc'
+import { SessionManager } from '$lib/session'
 
 const auth = new AponiaAuth({
-  secret: 'secret',
+  session: new SessionManager({ secret: 'secret' }),
   providers: [
     new OAuthProvider(
       GitHub({ clientId: GITHUB_CLIENT_ID, clientSecret: GITHUB_CLIENT_SECRET })
@@ -33,20 +33,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     })
   }
 
-  if (internalResponse.headers != null) {
-    event.setHeaders(
-      internalResponse.headers instanceof Headers
-      ? Object.fromEntries(internalResponse.headers.entries())
-      : Object.fromEntries(Object.entries(internalResponse.headers))
-    )
-  }
-
   if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
     throw redirect(internalResponse.status, internalResponse.redirect)
-  }
-
-  if (internalResponse.body != null) {
-    return json(internalResponse.body)
   }
 
   return await resolve(event)
