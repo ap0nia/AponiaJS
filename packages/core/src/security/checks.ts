@@ -49,7 +49,7 @@ export const pkce = {
    * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#pkce
    */
   async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.config.checks.includes("pkce")) return [ 'auth', null ] as const
+    if (!provider.provider.checks?.includes("pkce")) return [ 'auth', null ] as const
 
     const codeVerifier = request.cookies[provider.cookies.pkceCodeVerifier.name]
     if (!codeVerifier) throw new Error("PKCE code_verifier cookie was missing.")
@@ -93,7 +93,7 @@ export const state = {
    * @see https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1
    */
   async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.config.checks.includes('state')) return [ oauth.skipStateCheck, null ] as const
+    if (!provider.provider.checks?.includes('state')) return [ oauth.skipStateCheck, null ] as const
 
     const state = request.cookies[provider.cookies.state.name]
     if (!state) throw new Error("State cookie was missing.")
@@ -134,7 +134,7 @@ export const nonce = {
    * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#nonce
    */
   async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.config.checks.includes('nonce')) return [ oauth.expectNoNonce, null ] as const
+    if (!provider.provider.checks?.includes('nonce')) return [ oauth.expectNoNonce, null ] as const
 
     const nonce = request.cookies[provider.cookies.nonce.name]
     if (!nonce) throw new Error("Nonce cookie was missing.")
