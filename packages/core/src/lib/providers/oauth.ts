@@ -308,15 +308,10 @@ export class OAuthProvider<T> {
 
     const session = await this.config.profile(profile, tokens)
 
-    return { session }
+    return { session, redirect: '/', status: 302 }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    // const response = await this.callbacks.onSignIn({
-    //   request,
-    //   response: {},
-    //   provider: this
-    // })
     return {} 
   }
 }

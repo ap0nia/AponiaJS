@@ -290,15 +290,10 @@ export class OIDCProvider<T> {
 
     const session = await this.config.profile(profile, result)
 
-    return { session }
+    return { session, redirect: '/', status: 302 }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    // const response = await this.callbacks.onSignIn({
-    //   request,
-    //   response: {},
-    //   provider: this
-    // })
     return {} 
   }
 }

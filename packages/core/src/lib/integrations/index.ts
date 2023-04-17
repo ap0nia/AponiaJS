@@ -12,12 +12,12 @@ import type { OIDCProvider } from "../providers/oidc"
  * Designated auth pages.
  */
 interface Pages {
-  // suffixed with provider ID
+  // Routes suffixed with provider ID.
   signIn: string
   signOut: string
   callback: string
 
-  // static
+  // Static routes.
   session: string
 }
 
@@ -169,8 +169,6 @@ export class AponiaAuth {
       response.cookies ??= []
       response.cookies.push(await this.session.createSessionCookie(response.session))
     }
-    console.log({ response }, response.cookies)
-
     return response
   }
 }
