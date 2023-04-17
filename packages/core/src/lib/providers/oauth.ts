@@ -306,33 +306,17 @@ export class OAuthProvider<T> {
 
     if (!profile) throw new Error("TODO: Handle missing profile")
 
-    const profileResult = await this.config.profile(profile, tokens)
+    const session = await this.config.profile(profile, tokens)
 
-    cookies.push({
-      name: this.cookies.sessionToken.name,
-      value: await encode({ ...this.jwt, token: profileResult }),
-      options: {
-        ...this.cookies.sessionToken.options, 
-        maxAge: 30 * 24 * 60 * 60,
-      }
-    })
-
-    const response = await this.callbacks.onSignIn({
-      request,
-      response: { data: profileResult as T, cookies },
-      provider: this
-    })
-
-    return response 
+    return { session }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    const response = await this.callbacks.onSignIn({
-      request,
-      response: {},
-      provider: this
-    })
-
-    return response 
+    // const response = await this.callbacks.onSignIn({
+    //   request,
+    //   response: {},
+    //   provider: this
+    // })
+    return {} 
   }
 }

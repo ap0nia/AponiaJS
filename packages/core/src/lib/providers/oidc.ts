@@ -288,33 +288,17 @@ export class OIDCProvider<T> {
 
     const profile: any = oauth.getValidatedIdTokenClaims(result)
 
-    const profileResult = await this.config.profile(profile, result)
+    const session = await this.config.profile(profile, result)
 
-    cookies.push({
-      name: this.cookies.sessionToken.name,
-      value: await encode({ ...this.jwt, token: profileResult }),
-      options: {
-        ...this.cookies.sessionToken.options, 
-        maxAge: 30 * 24 * 60 * 60,
-      }
-    })
-
-    const response = await this.callbacks.onSignIn({
-      request,
-      response: { data: profileResult as T, cookies },
-      provider: this
-    })
-
-    return response 
+    return { session }
   }
 
   async signOut(request: InternalRequest): Promise<InternalResponse> {
-    const response = await this.callbacks.onSignIn({
-      request,
-      response: {},
-      provider: this
-    })
-
-    return response 
+    // const response = await this.callbacks.onSignIn({
+    //   request,
+    //   response: {},
+    //   provider: this
+    // })
+    return {} 
   }
 }

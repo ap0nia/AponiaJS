@@ -21,8 +21,7 @@ const auth = new AponiaAuth({
 })
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const internalRequest = await toInternalRequest(event.request)
-  const internalResponse = await auth.handle(internalRequest)
+  const internalResponse = await auth.handle(event.request)
 
   if (internalResponse == null) {
     return await resolve(event)

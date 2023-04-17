@@ -148,25 +148,30 @@ export class AponiaAuth {
       }
     }
 
+    let response: InternalResponse = {}
+
     const signinHandler = this.routes.signin.get(pathname)
     if (signinHandler) {
-      const response = await signinHandler.signIn(internalRequest)
-      return response
+      response = await signinHandler.signIn(internalRequest)
     }
 
     const signoutHandler = this.routes.signout.get(pathname)
     if (signoutHandler) {
-      const response = await signoutHandler.signOut(internalRequest)
-      return response
+      response = await signoutHandler.signOut(internalRequest)
     }
 
     const callbackHandler = this.routes.callback.get(pathname)
     if (callbackHandler) {
-      const response = await callbackHandler.callback(internalRequest)
-      return response
+      response = await callbackHandler.callback(internalRequest)
     }
 
-    return {}
+    if (response.session) {
+      response.cookies ??= []
+      response.cookies.push(await this.session.createSessionCookie(response.session))
+    }
+    console.log({ response }, response.cookies)
+
+    return response
   }
 }
 

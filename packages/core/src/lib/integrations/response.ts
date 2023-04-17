@@ -14,10 +14,10 @@ export interface Cookie {
  * Internal Response. `data` is used to share data between handlers and callbacks.
  * @internal
  */
-export interface InternalResponse<T = any> {
+export interface InternalResponse {
   status?: number
   headers?: Headers | HeadersInit
-  data?: T
+  session?: any 
   body?: any
   redirect?: string
   cookies?: Cookie[]

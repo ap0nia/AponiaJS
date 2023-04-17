@@ -2,7 +2,9 @@ import { parse } from 'cookie'
 import type { Awaitable } from '@auth/core/types'
 import { encode, decode } from './security/jwt'
 import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from './security/jwt'
-import { defaultCookies, signCookie, type InternalCookiesOptions } from './security/cookie'
+import { defaultCookies } from './security/cookie'
+import type { InternalCookiesOptions } from './security/cookie'
+import type { Cookie } from './integrations/response'
 
 export function getRequestTokens(request: Request, options: InternalCookiesOptions) {
   const cookies = parse(request.headers.get('cookie') ?? '')
@@ -116,10 +118,12 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = S
   /**
    * Create a session cookie.
    */
-  async createSessionCookie(session: TSession) {
-    const token = await this.createSessionToken(session)
-    const cookie = signCookie(this.cookies.refreshToken, token, this.jwt)
-    return cookie
+  async createSessionCookie(session: TSession): Promise<Cookie> {
+    return {
+      name: this.cookies.sessionToken.name,
+      value: await this.createSessionToken(session),
+      options: this.cookies.sessionToken.options
+    }
   }
 
   /**
