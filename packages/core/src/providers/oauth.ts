@@ -18,18 +18,11 @@ interface Pages {
 
 type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-type Callback<T> = (profile: T, tokens: TokenSet, provider: OAuthProvider<T>) => Awaitable<InternalResponse | void>
-
-type Callbacks<T> = {
-  onSignIn?: Callback<T>
-  onSignOut?: Callback<T>
-}
-
 interface Options<T> {
   /**
    * Set the callbacks for the provider.
    */
-  callbacks?: Callbacks<T>
+  onAuth?: (profile: T, tokens: TokenSet, provider: OAuthProvider<T>) => Awaitable<InternalResponse | void>
 }
 
 export class OAuthProvider<T> {
@@ -51,7 +44,7 @@ export class OAuthProvider<T> {
 
   pages: Pages
 
-  callbacks: Callbacks<T>
+  onAuth?: (profile: T, tokens: TokenSet, provider: OAuthProvider<T>) => Awaitable<InternalResponse | void>
 
   oauthFlow: {
     authorization: { 
@@ -74,10 +67,7 @@ export class OAuthProvider<T> {
     this.pages = Object.create(null)
     this.oauthFlow = Object.create(null)
 
-    this.callbacks = {
-      onSignIn: options.callbacks?.onSignIn ?? (() => {}),
-      onSignOut: options.callbacks?.onSignOut ?? (() => {}),
-    }
+    this.onAuth = options.onAuth
 
     this.config = merge(provider, provider.options)
     this.config.checks ??= ['pkce']
@@ -197,6 +187,8 @@ export class OAuthProvider<T> {
   }
 
    async signIn(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: InternalCookie[] = []
     const { url } = this.oauthFlow.authorization
 
@@ -231,6 +223,8 @@ export class OAuthProvider<T> {
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: InternalCookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)
@@ -284,9 +278,5 @@ export class OAuthProvider<T> {
     const session = await this.config.profile(profile, tokens)
 
     return { session, redirect: '/', status: 302 }
-  }
-
-  async signOut(request: InternalRequest): Promise<InternalResponse> {
-    return { body: request.session } 
   }
 }

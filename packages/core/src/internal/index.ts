@@ -47,11 +47,6 @@ export interface AuthConfig {
  */
 export class Auth {
   /**
-   * Whether the auth instance has been fully initialized.
-   */
-  initialized?: boolean
-
-  /**
    * List of providers.
    */
   providers: AnyProvider[]
@@ -105,22 +100,10 @@ export class Auth {
   }
 
   /**
-   * Asynchronously initialize all providers.
-   * OAuth providers may need to fetch their configuration via discovery endpoints (OIDC).
-   */
-  async initialize() {
-    if (this.initialized) return
-    await Promise.all(this.providers.map(async (provider) => provider.initialize()))
-    this.initialized = true
-  }
-
-  /**
    * Handle a request and return an internal response.
    * Specific implementations should convert the internal response accordingly.
    */
   async handle(request: Request): Promise<InternalResponse> {
-    if (!this.initialized) await this.initialize()
-
     const internalRequest = await toInternalRequest(request)
 
     const userSession = await this.session.getRequestSession(internalRequest)
@@ -144,7 +127,6 @@ export class Auth {
 
     const signoutHandler = this.routes.signout.get(pathname)
     if (signoutHandler) {
-      response = await signoutHandler.signOut(internalRequest)
       if (internalRequest.session) {
         await this.session.invalidateSession(internalRequest.session)
       }

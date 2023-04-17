@@ -4,7 +4,7 @@ import type { Awaitable, TokenSet } from '@auth/core/types'
 import * as checks from '../security/checks'
 import { merge } from '../utils/merge'
 import { defaultProfile } from '../utils/profile'
-import type { InternalCookiesOptions } from '../security/cookie'
+import { InternalCookiesOptions, defaultCookies } from '../security/cookie'
 import type { JWTOptions } from '../security/jwt'
 import type { Mutable } from '../utils/mutable'
 import type { InternalRequest } from '../internal/request'
@@ -18,18 +18,26 @@ interface Pages {
 
 type Config<T> = OAuthConfig<T> & { options?: OAuthUserConfig<T> }
 
-type Callback<T> = (profile: T, tokens: TokenSet, provider: OIDCProvider<T>) => Awaitable<any>
-
-type Callbacks<T> = {
-  onSignIn: Callback<T>
-  onSignOut: Callback<T>
-}
-
 interface Options<T> {
+  /**
+   * Whether to use secure cookies.
+   */
+  useSecureCookies?: boolean
+
   /**
    * Set the callbacks for the provider.
    */
-  callbacks: Callbacks<T>
+  onAuth?: (profile: T, tokens: TokenSet, provider: OIDCProvider<T>) => Awaitable<InternalResponse | void>
+
+  /**
+   * JWT options.
+   */
+  jwt?: JWTOptions
+
+  /**
+   * Set the exact pages for the provider.
+   */
+  pages?: Pages
 }
 
 export class OIDCProvider<T> {
@@ -47,11 +55,11 @@ export class OIDCProvider<T> {
 
   cookies: InternalCookiesOptions
 
-  callbacks: Callbacks<T>
-
   jwt: JWTOptions
 
   pages: Pages
+
+  onAuth?: (profile: T, tokens: TokenSet, provider: OIDCProvider<T>) => Awaitable<InternalResponse | void>
 
   oauthFlow: {
     authorization: { 
@@ -69,15 +77,12 @@ export class OIDCProvider<T> {
 
   constructor(provider: Config<T>, options: Partial<Options<T>> = {}) {
     this.authorizationServer = Object.create(null)
-    this.jwt = Object.create(null)
-    this.cookies = Object.create(null)
-    this.pages = Object.create(null)
     this.oauthFlow = Object.create(null)
 
-    this.callbacks = {
-      onSignIn: options.callbacks?.onSignIn ?? (() => {}),
-      onSignOut: options.callbacks?.onSignOut ?? (() => {}),
-    }
+    this.jwt = options.jwt ? options.jwt : Object.create(null)
+    this.cookies = defaultCookies(options.useSecureCookies)
+    this.pages = options.pages ?? Object.create(null)
+    this.onAuth = options.onAuth
 
     this.config = merge(provider, provider.options)
     this.config.checks ??= ['pkce']
@@ -175,6 +180,8 @@ export class OIDCProvider<T> {
   }
 
    async signIn(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: InternalCookie[] = []
     const { url } = this.oauthFlow.authorization
 
@@ -213,6 +220,8 @@ export class OIDCProvider<T> {
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: InternalCookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)
@@ -267,9 +276,5 @@ export class OIDCProvider<T> {
     const session = await this.config.profile(profile, result)
 
     return { session, redirect: '/', status: 302 }
-  }
-
-  async signOut(request: InternalRequest): Promise<InternalResponse> {
-    return { body: request.session } 
   }
 }

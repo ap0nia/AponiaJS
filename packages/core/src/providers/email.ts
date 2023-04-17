@@ -49,8 +49,4 @@ export class EmailProvider<T> {
   async callback(request: InternalRequest): Promise<InternalResponse> {
     return {}
   }
-
-  async signOut(request: InternalRequest): Promise<InternalResponse> {
-    return {}
-  }
 }
