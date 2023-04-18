@@ -89,9 +89,10 @@ export class Auth {
     }
 
     this.providers.forEach(provider => {
-      provider.setJWTOptions(this.session.jwt)
-      provider.setCookiesOptions(this.session.cookies)
-      provider.setPages(this.pages)
+      provider
+        .setJWTOptions(this.session.jwt)
+        .setCookiesOptions(this.session.cookies)
+        .setPages(this.pages)
 
       this.routes.signin.set(provider.pages.signIn, provider)
       this.routes.signout.set(provider.pages.signOut, provider)

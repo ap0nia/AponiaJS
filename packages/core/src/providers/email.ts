@@ -30,14 +30,17 @@ export class EmailProvider<T> {
       signOut: `${pages.signOut ?? '/auth/logout'}/${this.type}`,
       callback: `${pages.callback ?? '/auth/callback'}/${this.type}`
     }
+    return this
   }
 
   setCookiesOptions(options: InternalCookiesOptions) {
     this.cookies = options
+    return this
   }
 
   setJWTOptions(options: JWTOptions) {
     this.jwt = options
+    return this
   }
 
   async initialize() {}

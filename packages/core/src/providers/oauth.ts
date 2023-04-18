@@ -88,14 +88,17 @@ export class OAuthProvider<T> {
       signOut: `${pages.signOut ?? '/auth/logout'}/${this.config.id}`,
       callback: `${pages.callback ?? '/auth/callback'}/${this.config.id}`
     }
+    return this
   }
 
   setCookiesOptions(options: InternalCookiesOptions) {
     this.cookies = options
+    return this
   }
 
   setJWTOptions(options: JWTOptions) {
     this.jwt = options
+    return this
   }
 
   async initializeAuthorizationServer() {
