@@ -14,9 +14,9 @@ export interface InternalCookie {
  * Internal Response.
  * @internal
  */
-export interface InternalResponse<TUser = any, TSession = any> {
-  session?: TSession
+export interface InternalResponse<TUser = any, TSession = TUser> {
   user?: TUser
+  session?: TSession
   status?: number
   redirect?: string
   cookies?: InternalCookie[]
