@@ -1,11 +1,11 @@
 import { parse } from "cookie"
 
-export type InternalRequest = {
+export type InternalRequest<TUser = any, TSession = TUser> = {
+  user?: TUser
+  session?: TSession
   request: Request
   url: URL
   cookies: Record<string, string>
-  session?: any
-  user?: any
 }
 
 export async function toInternalRequest(request: Request): Promise<InternalRequest> {

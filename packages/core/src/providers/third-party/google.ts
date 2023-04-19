@@ -24,7 +24,7 @@ export const GoogleOptions: OIDCDefaultConfig<GoogleProfile> = {
   issuer: 'https://accounts.google.com',
 }
 
-export default function Google<TUser = GoogleProfile, TSession = TUser>(
+export function Google<TUser = GoogleProfile, TSession = TUser>(
   options: OIDCUserConfig<GoogleProfile, TUser, TSession>
 ): OIDCProvider<GoogleProfile, TUser, TSession> {
   return new OIDCProvider(mergeOIDCOptions(options, GoogleOptions))

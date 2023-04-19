@@ -114,7 +114,7 @@ export const Auth0Options: OIDCDefaultConfig<Auth0Profile> = {
   issuer: 'auth.js',
 }
 
-export default function Auth0<TUser = Auth0Profile, TSession = TUser>(
+export function Auth0<TUser = Auth0Profile, TSession = TUser>(
   options: OIDCUserConfig<Auth0Profile, TUser, TSession>
 ): OIDCProvider<Auth0Profile, TUser, TSession> {
   return new OIDCProvider(mergeOIDCOptions(options, Auth0Options))

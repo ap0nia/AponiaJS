@@ -90,7 +90,7 @@ export const DiscordOptions: OAuthDefaultConfig<DiscordProfile> = {
   }
 }
 
-export default function Discord<TUser = DiscordProfile, TSession = TUser>(
+export function Discord<TUser = DiscordProfile, TSession = TUser>(
   options: OAuthUserConfig<DiscordProfile, TUser, TSession>
 ): OAuthProvider<DiscordProfile, TUser, TSession> {
   return new OAuthProvider(mergeOAuthOptions(options, DiscordOptions))

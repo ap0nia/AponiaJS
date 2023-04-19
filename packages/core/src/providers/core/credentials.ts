@@ -1,6 +1,9 @@
 import { Pages } from ".";
 import type { InternalRequest } from "../../internal/request";
 import type { InternalResponse } from "../../internal/response";
+import type { CookiesOptions } from "../../security/cookie";
+import type { JWTOptions } from "../../security/jwt";
+import type { Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
@@ -19,7 +22,7 @@ export interface CredentialsConfig<TUser, TSession = TUser>  {
 /**
  * Credentials provider (first-party only).
  */
-export class CredentialsProvider<TUser, TSession = TUser> {
+export class CredentialsProvider<TUser, TSession = TUser> implements Provider<InternalRequest, TUser, TSession> {
   id = 'credentials' as const
 
   onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser, TSession>>
@@ -34,6 +37,16 @@ export class CredentialsProvider<TUser, TSession = TUser> {
     }
   }
 
+  setJwtOptions(options: JWTOptions) {
+    // this.jwt = options
+    return this
+  }
+
+  setCookiesOptions(options: CookiesOptions) {
+    // this.cookies = options
+    return this
+  }
+
   async login(request: InternalRequest): Promise<InternalResponse> {
     return this.onAuth(request)
   }
@@ -43,6 +56,6 @@ export class CredentialsProvider<TUser, TSession = TUser> {
   }
 }
 
-export default function Credentials<TUser, TSession = TUser>(config: CredentialsConfig<TUser, TSession>) {
+export function Credentials<TUser, TSession = TUser>(config: CredentialsConfig<TUser, TSession>) {
   return new CredentialsProvider<TUser, TSession>(config)
 }

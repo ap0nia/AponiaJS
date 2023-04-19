@@ -5,7 +5,7 @@ import type { Cookie, CookiesOptions } from '../../security/cookie'
 import type { JWTOptions } from '../../security/jwt'
 import type { InternalRequest } from '../../internal/request'
 import type { InternalResponse } from '../../internal/response'
-import type { Pages } from '.'
+import type { Pages, Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
@@ -97,12 +97,13 @@ interface OAuthUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OAuthConfig<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthConfig<
+  TProfile, TUser = TProfile, TSession = TUser
+> extends Provider<TProfile, TUser, TSession> {
   id: string
   clientId: string
   clientSecret: string
   client: oauth.Client
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
   jwt: JWTOptions
   cookies: CookiesOptions
   checks: OAuthCheck[]

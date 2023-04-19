@@ -94,7 +94,7 @@ export const GitHubOptions: OAuthDefaultConfig<GitHubProfile> = {
   }
 }
 
-export default function GitHub<TUser = GitHubProfile, TSession = TUser>(
+export function GitHub<TUser = GitHubProfile, TSession = TUser>(
   options: OAuthUserConfig<GitHubProfile, TUser, TSession>
 ): OAuthProvider<GitHubProfile, TUser, TSession> {
   return new OAuthProvider(mergeOAuthOptions(options, GitHubOptions))

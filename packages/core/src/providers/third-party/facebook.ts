@@ -36,7 +36,7 @@ export const FacebookOptions: OAuthDefaultConfig<FacebookProfile> = {
   }
 }
 
-export default function Facebook<TUser = FacebookProfile, TSession = TUser>(
+export function Facebook<TUser = FacebookProfile, TSession = TUser>(
   options: OAuthUserConfig<FacebookProfile, TUser, TSession>
 ): OAuthProvider<FacebookProfile, TUser, TSession> {
   return new OAuthProvider(mergeOAuthOptions(options, FacebookOptions))

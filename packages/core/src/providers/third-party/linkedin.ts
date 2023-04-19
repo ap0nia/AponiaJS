@@ -57,7 +57,7 @@ export const LinkedInOptions: OAuthDefaultConfig<LinkedInProfile> = {
   }
 }
 
-export default function LinkedIn<TUser = LinkedInProfile, TSession = TUser>(
+export function LinkedIn<TUser = LinkedInProfile, TSession = TUser>(
   options: OAuthUserConfig<LinkedInProfile, TUser, TSession>
 ): OAuthProvider<LinkedInProfile, TUser, TSession> {
   return new OAuthProvider(mergeOAuthOptions(options, LinkedInOptions))

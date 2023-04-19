@@ -5,17 +5,13 @@ import type { Cookie, CookiesOptions } from '../../security/cookie'
 import type { JWTOptions } from '../../security/jwt'
 import type { InternalRequest } from '../../internal/request'
 import type { InternalResponse } from '../../internal/response'
+import type { Pages, Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
 type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
 
 type Tokens = Partial<oauth.OAuth2TokenEndpointResponse>
-
-interface Pages {
-  login: string
-  callback: string
-}
 
 interface Endpoint<TContext = any, TResponse = any> {
   params?: Record<string, unknown>
@@ -101,12 +97,13 @@ interface OIDCUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OIDCConfig<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OIDCConfig<
+  TProfile, TUser = TProfile, TSession = TUser
+> extends Provider<TProfile, TUser, TSession> {
   id: string
   clientId: string
   clientSecret: string
   client: oauth.Client
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
   jwt: JWTOptions
   cookies: CookiesOptions
   checks: OIDCCheck[]
@@ -130,6 +127,8 @@ interface OIDCEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TSession Session.
  */
 export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implements OIDCConfig<TProfile, TUser, TSession> {
+  initialized?: boolean
+
   id: string
 
   type = "oidc" as const
@@ -167,7 +166,8 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
     this.onAuth = options.onAuth
 
     // OAuth doesn't use discovery for authorization server, only OIDC.
-    this.authorizationServer = { issuer: 'auth.js', }
+    this.authorizationServer = { issuer: 'auth.js' }
+    this.initialized = false
   }
 
   setJwtOptions(options: JWTOptions) {
@@ -197,6 +197,8 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
    * Login the user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: Cookie[] = []
 
     if (!this.authorizationServer.authorization_endpoint) {
@@ -235,6 +237,8 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
    * Callback after the user has logged in.
    */
   async callback(request: InternalRequest): Promise<InternalResponse> {
+    if (!this.initialized) await this.initialize()
+
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)

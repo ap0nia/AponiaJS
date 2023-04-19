@@ -1,40 +1,38 @@
-import { CredentialsProvider } from "../providers/credentials"
-import { EmailProvider } from "../providers/email"
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
 import type { SessionManager } from "../session"
-import type { OAuthProvider } from "../providers/oauth"
-import type { OIDCProvider } from "../providers/oidc"
+import type { CredentialsProvider } from "../providers/core/credentials"
+import type { EmailProvider } from "../providers/core/email"
+import type { OAuthProvider } from "../providers/core/oauth"
+import type { OIDCProvider } from "../providers/core/oidc"
 
 /**
  * Designated auth pages.
  */
 interface Pages {
-  signIn: string
   signOut: string
-  callback: string
   session: string
 }
 
-type AnyProvider = 
-  | OAuthProvider<any> 
-  | OIDCProvider<any> 
-  | CredentialsProvider<any> 
-  | EmailProvider<any>
+type AnyProvider<TUser, TSession> = 
+  | OAuthProvider<any, TUser, TSession> 
+  | OIDCProvider<any, TUser, TSession> 
+  | CredentialsProvider<TUser, TSession> 
+  | EmailProvider<TUser, TSession>
 
 /**
  * Configuration.
  */
-export interface AuthConfig {
+export interface AuthConfig<TUser, TSession> {
   /**
    * List of providers.
    */
-  providers: AnyProvider[]
+  providers: AnyProvider<TUser, TSession>[]
 
   /**
    * Session.
    */
-  session: SessionManager
+  session: SessionManager<TUser, TSession>
 
   /**
    * Designated auth pages.
@@ -45,19 +43,19 @@ export interface AuthConfig {
 /**
  * Aponia Auth!
  */
-export class Auth {
+export class Auth<TUser, TSession> {
   /**
    * List of providers.
    */
-  providers: AnyProvider[]
+  providers: AnyProvider<TUser, TSession>[]
 
   /**
    * Session manager.
    */
-  session: SessionManager
+  session: SessionManager<TUser, TSession>
 
   /**
-   * Designated auth pages.
+   * Static auth pages not associated with any provider.
    */
   pages: Pages
 
@@ -65,37 +63,31 @@ export class Auth {
    * Routes. Generate internal response on match.
    */
   routes: {
-    signin: Map<string, AnyProvider>
-    signout: Map<string, AnyProvider>
-    callback: Map<string, AnyProvider>
+    login: Map<string, AnyProvider<TUser, TSession>>
+    callback: Map<string, AnyProvider<TUser, TSession>>
   }
 
-  constructor(config: AuthConfig) {
+  constructor(config: AuthConfig<TUser, TSession>) {
     this.providers = config.providers
 
     this.session = config.session
 
     this.pages = {
-      signIn: config.pages?.signIn ?? '/auth/login',
       signOut: config.pages?.signOut ?? '/auth/logout',
-      callback: config.pages?.callback ?? '/auth/callback',
       session: config.pages?.session ?? '/auth/session',
     }
 
     this.routes = {
-      signin: new Map(),
-      signout: new Map(),
+      login: new Map(),
       callback: new Map(),
     }
 
     this.providers.forEach(provider => {
       provider
-        .setJWTOptions(this.session.jwt)
+        .setJwtOptions(this.session.jwt)
         .setCookiesOptions(this.session.cookies)
-        .setPages(this.pages)
 
-      this.routes.signin.set(provider.pages.signIn, provider)
-      this.routes.signout.set(provider.pages.signOut, provider)
+      this.routes.login.set(provider.pages.login, provider)
       this.routes.callback.set(provider.pages.callback, provider)
     })
   }
@@ -117,20 +109,17 @@ export class Auth {
       case this.pages.session: {
         return { body: internalRequest.session }
       }
+
+      case this.pages.signOut: {
+        return await this.session.invalidateSession(internalRequest.session)
+      }
     }
 
     let response: InternalResponse = {}
 
-    const signinHandler = this.routes.signin.get(pathname)
+    const signinHandler = this.routes.login.get(pathname)
     if (signinHandler) {
-      response = await signinHandler.signIn(internalRequest)
-    }
-
-    const signoutHandler = this.routes.signout.get(pathname)
-    if (signoutHandler) {
-      if (internalRequest.session) {
-        await this.session.invalidateSession(internalRequest.session)
-      }
+      response = await signinHandler.login(internalRequest)
     }
 
     const callbackHandler = this.routes.callback.get(pathname)
