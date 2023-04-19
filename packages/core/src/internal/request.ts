@@ -1,8 +1,7 @@
 import { parse } from "cookie"
 
-export type InternalRequest<TUser = any, TSession = TUser> = {
+export type InternalRequest<TUser = any> = {
   user?: TUser
-  session?: TSession
   request: Request
   url: URL
   cookies: Record<string, string>

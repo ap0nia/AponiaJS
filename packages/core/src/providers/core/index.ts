@@ -7,6 +7,6 @@ export interface Pages {
   callback: string
 }
 
-export interface Provider<TProfile, TUser = TProfile, TSession = TUser> {
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
+export interface Provider<TProfile, TUser = TProfile> {
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 }

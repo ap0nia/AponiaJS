@@ -7,11 +7,11 @@ import type { Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
-export interface CredentialsConfig<TUser, TSession = TUser>  {
+export interface CredentialsConfig<T>  {
   /**
    * Handle the user logging in.
    */
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
 
   /**
    * Pages.
@@ -22,14 +22,14 @@ export interface CredentialsConfig<TUser, TSession = TUser>  {
 /**
  * Credentials provider (first-party only).
  */
-export class CredentialsProvider<TUser, TSession = TUser> implements Provider<InternalRequest, TUser, TSession> {
+export class CredentialsProvider<T> implements Provider<InternalRequest, T> {
   id = 'credentials' as const
 
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
 
   pages: Pages
 
-  constructor(config: CredentialsConfig<TUser, TSession>) {
+  constructor(config: CredentialsConfig<T>) {
     this.onAuth = config.onAuth
     this.pages = {
       login: config.pages?.login ?? `/auth/login/${this.id}`,
@@ -56,6 +56,6 @@ export class CredentialsProvider<TUser, TSession = TUser> implements Provider<In
   }
 }
 
-export function Credentials<TUser, TSession = TUser>(config: CredentialsConfig<TUser, TSession>) {
-  return new CredentialsProvider<TUser, TSession>(config)
+export function Credentials<TUser>(config: CredentialsConfig<TUser>) {
+  return new CredentialsProvider<TUser>(config)
 }

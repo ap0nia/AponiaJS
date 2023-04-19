@@ -1,24 +1,24 @@
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
-import type { SessionManager } from "../session"
+import type { TokenSessionManager } from "../session/token"
 import type { CredentialsProvider } from "../providers/core/credentials"
 import type { EmailProvider } from "../providers/core/email"
 import type { OAuthProvider } from "../providers/core/oauth"
 import type { OIDCProvider } from "../providers/core/oidc"
 
 /**
- * Designated auth pages.
+ * Designated static auth pages.
  */
 interface Pages {
   signOut: string
   session: string
 }
 
-type AnyProvider<TUser, TSession> = 
-  | OAuthProvider<any, TUser, TSession> 
-  | OIDCProvider<any, TUser, TSession> 
-  | CredentialsProvider<TUser, TSession> 
-  | EmailProvider<TUser, TSession>
+type AnyProvider<T> = 
+  | OAuthProvider<any, T> 
+  | OIDCProvider<any, T> 
+  | CredentialsProvider<T> 
+  | EmailProvider<T>
 
 /**
  * Configuration.
@@ -27,12 +27,12 @@ export interface AuthConfig<TUser, TSession> {
   /**
    * List of providers.
    */
-  providers: AnyProvider<TUser, TSession>[]
+  providers: AnyProvider<TUser>[]
 
   /**
    * Session.
    */
-  session: SessionManager<TUser, TSession>
+  session: TokenSessionManager<TUser, TSession>
 
   /**
    * Designated auth pages.
@@ -47,12 +47,12 @@ export class Auth<TUser, TSession> {
   /**
    * List of providers.
    */
-  providers: AnyProvider<TUser, TSession>[]
+  providers: AnyProvider<TUser>[]
 
   /**
    * Session manager.
    */
-  session: SessionManager<TUser, TSession>
+  session: TokenSessionManager<TUser, TSession>
 
   /**
    * Static auth pages not associated with any provider.
@@ -63,8 +63,8 @@ export class Auth<TUser, TSession> {
    * Routes. Generate internal response on match.
    */
   routes: {
-    login: Map<string, AnyProvider<TUser, TSession>>
-    callback: Map<string, AnyProvider<TUser, TSession>>
+    login: Map<string, AnyProvider<TUser>>
+    callback: Map<string, AnyProvider<TUser>>
   }
 
   constructor(config: AuthConfig<TUser, TSession>) {
@@ -83,10 +83,7 @@ export class Auth<TUser, TSession> {
     }
 
     this.providers.forEach(provider => {
-      provider
-        .setJwtOptions(this.session.jwt)
-        .setCookiesOptions(this.session.cookies)
-
+      provider.setJwtOptions(this.session.jwt).setCookiesOptions(this.session.cookies)
       this.routes.login.set(provider.pages.login, provider)
       this.routes.callback.set(provider.pages.callback, provider)
     })
@@ -98,20 +95,12 @@ export class Auth<TUser, TSession> {
    */
   async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
-
-    const userSession = await this.session.getRequestSession(internalRequest)
-    internalRequest.session = userSession?.session
-    internalRequest.user = userSession?.user
-
+    const refreshResponse = await this.session.handleRefresh(internalRequest)
     const { pathname } = internalRequest.url
 
     switch (pathname) {
-      case this.pages.session: {
-        return { body: internalRequest.session }
-      }
-
       case this.pages.signOut: {
-        return await this.session.invalidateSession(internalRequest.session)
+        return await this.session.logout(internalRequest.request)
       }
     }
 
@@ -127,17 +116,9 @@ export class Auth<TUser, TSession> {
       response = await callbackHandler.callback(internalRequest)
     }
 
-    if (response.session) {
+    if (refreshResponse.cookies?.length) {
       response.cookies ??= []
-      response.cookies.push(await this.session.createSessionCookie(response.session))
-      response.user ??= await this.session.getUserFromSession(response.session)
-    }
-
-    response.session ??= internalRequest.session
-    response.user ??= internalRequest.user
-
-    if (pathname.startsWith(this.pages.signOut)) {
-      response = { ...response, ...await this.session.invalidateSession(internalRequest) }
+      response.cookies.concat(refreshResponse.cookies)
     }
 
     return response

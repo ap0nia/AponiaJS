@@ -1,5 +1,4 @@
 export * from './internal'
-export * from './session'
 
 export * from './providers/core'
 export * from './providers/core/credentials'

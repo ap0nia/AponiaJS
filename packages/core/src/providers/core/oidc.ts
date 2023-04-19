@@ -31,7 +31,7 @@ export interface OIDCDefaultConfig<TProfile> {
  * User options. Several can be omitted and filled in by the provider's default options.
  * @external
  */
-export interface OIDCUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OIDCUserConfig<TProfile, TUser = TProfile> {
   /**
    * Unique ID for the provider.
    */
@@ -55,7 +55,7 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * A function that is called when the user is authenticated.
    */
-  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 
   /**
    * Checks to perform.
@@ -70,7 +70,7 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * Endpoints to use.
    */
-  endpoints?: Partial<OIDCUserEndpoints<TProfile, TSession>>
+  endpoints?: Partial<OIDCUserEndpoints<TProfile, TUser>>
 
   /**
    * JWT options.
@@ -87,19 +87,17 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
  * Users can also provide just a string URL for the endpoints.
  * @external
  */
-interface OIDCUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
-  authorization: string | Endpoint<OIDCProvider<TUser, TSession>>
-  token: string | Endpoint<OIDCProvider<TUser, TSession>, Tokens>
-  userinfo: string | Endpoint<{ provider: OIDCProvider<TProfile, TUser, TSession>; tokens: Tokens }, TSession>
+interface OIDCUserEndpoints<TProfile, TUser = TProfile> {
+  authorization: string | Endpoint<OIDCProvider<TProfile, TUser>>
+  token: string | Endpoint<OIDCProvider<TProfile, TUser>, Tokens>
+  userinfo: string | Endpoint<{ provider: OIDCProvider<TProfile, TUser>; tokens: Tokens }, TProfile>
 }
 
 /**
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OIDCConfig<
-  TProfile, TUser = TProfile, TSession = TUser
-> extends Provider<TProfile, TUser, TSession> {
+export interface OIDCConfig<TProfile, TUser = TProfile> extends Provider<TProfile, TUser> {
   id: string
   clientId: string
   clientSecret: string
@@ -108,17 +106,17 @@ export interface OIDCConfig<
   cookies: CookiesOptions
   checks: OIDCCheck[]
   pages: Pages
-  endpoints?: Partial<OIDCEndpoints<TProfile, TUser, TSession>>
+  endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
 }
 
 /**
  * Internally, endpoints shouldn't be strings.
  * @internal
  */
-interface OIDCEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
-  authorization: Endpoint<OIDCProvider<TUser, TSession>>
-  token: Endpoint<OIDCProvider<TUser, TSession>, Tokens>
-  userinfo: Endpoint<{ provider: OIDCProvider<TProfile, TUser, TSession>; tokens: Tokens }, TSession>
+interface OIDCEndpoints<TProfile, TUser = TProfile> {
+  authorization: Endpoint<OIDCProvider<TProfile, TUser>>
+  token: Endpoint<OIDCProvider<TProfile, TUser>, Tokens>
+  userinfo: Endpoint<{ provider: OIDCProvider<TProfile, TUser>; tokens: Tokens }, TProfile>
 }
 
 /**
@@ -126,7 +124,7 @@ interface OIDCEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TUser User.
  * @param TSession Session.
  */
-export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implements OIDCConfig<TProfile, TUser, TSession> {
+export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TProfile, TUser> {
   initialized?: boolean
 
   id: string
@@ -149,11 +147,11 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
 
   pages: Pages
 
-  endpoints?: Partial<OIDCEndpoints<TProfile, TUser, TSession>>
+  endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
 
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 
-  constructor(options: OIDCConfig<TProfile, TUser, TSession>) {
+  constructor(options: OIDCConfig<TProfile, TUser>) {
     this.id = options.id
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
@@ -301,9 +299,9 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
  * Merge user options with default options.
  */
 export function mergeOIDCOptions(
-  userOptions: OIDCUserConfig<any, any, any>,
+  userOptions: OIDCUserConfig<any, any>,
   defaultOptions: OIDCDefaultConfig<any>,
-): OIDCConfig<any, any, any> {
+): OIDCConfig<any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
   const authorizationOptions = typeof userOptions.endpoints?.authorization === 'object'

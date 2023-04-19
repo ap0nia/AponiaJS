@@ -31,7 +31,7 @@ export interface OAuthDefaultConfig<TProfile> {
  * User options. Several can be omitted and filled in by the provider's default options.
  * @external
  */
-export interface OAuthUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthUserConfig<TProfile, TUser = TProfile> {
   /**
    * Unique ID for the provider.
    */
@@ -55,7 +55,7 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * A function that is called when the user is authenticated.
    */
-  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 
   /**
    * Checks to perform.
@@ -70,7 +70,7 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * Endpoints to use.
    */
-  endpoints?: Partial<OAuthUserEndpoints<TProfile, TSession>>
+  endpoints?: Partial<OAuthUserEndpoints<TProfile, TUser>>
 
   /**
    * JWT options.
@@ -87,19 +87,17 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
  * Users can also provide just a string URL for the endpoints.
  * @external
  */
-interface OAuthUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
-  authorization: string | Endpoint<OAuthProvider<TUser, TSession>>
-  token: string | Endpoint<OAuthProvider<TUser, TSession>, TokenSet>
-  userinfo: string | Endpoint<{ provider: OAuthProvider<TProfile, TUser, TSession>; tokens: TokenSet }, TSession>
+interface OAuthUserEndpoints<TProfile, TUser = TProfile> {
+  authorization: string | Endpoint<OAuthProvider<TUser>>
+  token: string | Endpoint<OAuthProvider<TUser>, TokenSet>
+  userinfo: string | Endpoint<{ provider: OAuthProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
 }
 
 /**
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OAuthConfig<
-  TProfile, TUser = TProfile, TSession = TUser
-> extends Provider<TProfile, TUser, TSession> {
+export interface OAuthConfig<TProfile, TUser = TProfile> extends Provider<TProfile, TUser> {
   id: string
   clientId: string
   clientSecret: string
@@ -108,17 +106,17 @@ export interface OAuthConfig<
   cookies: CookiesOptions
   checks: OAuthCheck[]
   pages: Pages
-  endpoints: OAuthEndpoints<TProfile, TUser, TSession>
+  endpoints: OAuthEndpoints<TProfile, TUser>
 }
 
 /**
  * Internally, endpoints shouldn't be strings.
  * @internal
  */
-interface OAuthEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
-  authorization: Endpoint<OAuthProvider<TUser, TSession>>
-  token: Endpoint<OAuthProvider<TUser, TSession>, TokenSet>
-  userinfo: Endpoint<{ provider: OAuthProvider<TProfile, TUser, TSession>; tokens: TokenSet }, TSession>
+interface OAuthEndpoints<TProfile, TUser = TProfile> {
+  authorization: Endpoint<OAuthProvider<TUser>>
+  token: Endpoint<OAuthProvider<TUser>, TokenSet>
+  userinfo: Endpoint<{ provider: OAuthProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
 }
 
 /**
@@ -126,7 +124,7 @@ interface OAuthEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TUser User.
  * @param TSession Session.
  */
-export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> implements OAuthConfig<TProfile, TUser, TSession> {
+export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TProfile, TUser> {
   id: string
 
   type = "oauth" as const
@@ -147,11 +145,11 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
 
   pages: Pages
 
-  endpoints: OAuthEndpoints<TProfile, TUser, TSession>
+  endpoints: OAuthEndpoints<TProfile, TUser>
 
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 
-  constructor(options: OAuthConfig<TProfile, TUser, TSession>) {
+  constructor(options: OAuthConfig<TProfile, TUser>) {
     this.id = options.id
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
@@ -284,9 +282,9 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
  * Merge user options with default options.
  */
 export function mergeOAuthOptions(
-  userOptions: OAuthUserConfig<any, any, any>,
+  userOptions: OAuthUserConfig<any, any>,
   defaultOptions: OAuthDefaultConfig<any>,
-): OAuthConfig<any, any, any> {
+): OAuthConfig<any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
   const authorizationUrl = typeof userOptions.endpoints?.authorization === 'string' 

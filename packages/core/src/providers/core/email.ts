@@ -7,11 +7,11 @@ import type { Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
-export interface EmailConfig<TUser, TSession = TUser>  {
+export interface EmailConfig<TUser>  {
   /**
    * Handle the user logging in.
    */
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser>>
 
   /**
    * Pages.
@@ -22,14 +22,14 @@ export interface EmailConfig<TUser, TSession = TUser>  {
 /**
  * Email provider (first-party only).
  */
-export class EmailProvider<TUser, TSession = TUser> implements Provider<InternalRequest, TUser, TSession> {
+export class EmailProvider<T> implements Provider<InternalRequest, T> {
   id = 'credentials' as const
 
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser, TSession>>
+  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
 
   pages: Pages
 
-  constructor(config: EmailConfig<TUser, TSession>) {
+  constructor(config: EmailConfig<T>) {
     this.onAuth = config.onAuth
     this.pages = {
       login: config.pages?.login ?? `/auth/login/${this.id}`,
@@ -55,6 +55,6 @@ export class EmailProvider<TUser, TSession = TUser> implements Provider<Internal
   }
 }
 
-export function Email<TUser, TSession = TUser>(config: EmailConfig<TUser, TSession>) {
-  return new EmailProvider<TUser, TSession>(config)
+export function Email<T>(config: EmailConfig<T>) {
+  return new EmailProvider<T>(config)
 }

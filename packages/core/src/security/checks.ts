@@ -1,7 +1,7 @@
 import * as oauth from 'oauth4webapi'
 import { encode, decode } from "./jwt"
 import type { JWTOptions } from "./jwt"
-import type { Cookie, CookieOption } from "./cookie"
+import type { Cookie } from "./cookie"
 import type { OAuthProvider } from "../providers/core/oauth"
 import type { InternalRequest } from '../internal/request'
 import { OIDCProvider } from '../providers/core/oidc'
@@ -18,7 +18,8 @@ export const pkce = {
     const code_verifier = oauth.generateRandomCodeVerifier()
     const value = await oauth.calculatePKCECodeChallenge(code_verifier)
     const cookie = await signCookie(
-      provider.cookies.pkceCodeVerifier,
+      'pkceCodeVerifier',
+      provider,
       code_verifier,
       { ...provider.jwt, maxAge: PKCE_MAX_AGE }
     )
@@ -38,7 +39,9 @@ export const pkce = {
     const codeVerifier = request.cookies[provider.cookies.pkceCodeVerifier.name]
     if (!codeVerifier) throw new Error("PKCE code_verifier cookie was missing.")
 
-    const value = await decode<CheckPayload>({
+    const d = provider.jwt.decode ?? decode
+
+    const value = await d<CheckPayload>({
       ...provider.jwt,
       token: codeVerifier,
     })
@@ -62,7 +65,8 @@ export const state = {
     // TODO: support customizing the state
     const value = oauth.generateRandomState()
     const cookie = await signCookie(
-      provider.cookies.state,
+      'state',
+      provider,
       value,
       { ...provider.jwt, maxAge: STATE_MAX_AGE }
     )
@@ -82,8 +86,10 @@ export const state = {
     const state = request.cookies[provider.cookies.state.name]
     if (!state) throw new Error("State cookie was missing.")
 
+    const d = provider.jwt.decode ?? decode
+
     // IDEA: Let the user do something with the returned state
-    const value = await decode<CheckPayload>({ ...provider.jwt, token: state })
+    const value = await d<CheckPayload>({ ...provider.jwt, token: state })
     if (!value?.value) throw new Error("State value could not be parsed.")
 
     const cookie: Cookie = {
@@ -103,7 +109,8 @@ export const nonce = {
   create: async (provider: AnyOAuthProvider) => {
     const value = oauth.generateRandomNonce()
     const cookie = await signCookie(
-      provider.cookies.nonce,
+      'nonce',
+      provider,
       value,
       { ...provider.jwt, maxAge: NONCE_MAX_AGE },
     )
@@ -123,7 +130,9 @@ export const nonce = {
     const nonce = request.cookies[provider.cookies.nonce.name]
     if (!nonce) throw new Error("Nonce cookie was missing.")
 
-    const value = await decode<CheckPayload>({ ...provider.jwt, token: nonce })
+    const d = provider.jwt.decode ?? decode
+
+    const value = await d<CheckPayload>({ ...provider.jwt, token: nonce })
     if (!value?.value) throw new Error("Nonce value could not be parsed.")
 
     const cookie: Cookie = {
@@ -139,12 +148,18 @@ export const nonce = {
 /** 
  * Returns a signed cookie.
  */
-async function signCookie(cookie: CookieOption, value: string, jwt: JWTOptions) {
+async function signCookie(
+  key: keyof AnyOAuthProvider['cookies'],
+  provider: AnyOAuthProvider,
+  value: string,
+  jwt: JWTOptions
+) {
+  const e = provider.jwt.encode ?? encode
   const signedCookie: Cookie = {
-    name: cookie.name,
-    value: await encode({ ...jwt, token: { value } }),
+    name: provider.cookies[key].name,
+    value: await e({ ...jwt, token: { value } }),
     options: { 
-      ...cookie.options,
+      ...provider.cookies[key].options,
       expires: new Date(Date.now() + (jwt.maxAge ?? 60) * 1000)
     },
   }

@@ -53,8 +53,8 @@ export const TwitchOptions: OIDCDefaultConfig<TwitchProfile> = {
   }
 }
 
-export function Twitch<TUser = TwitchProfile, TSession = TUser>(
-  options: OIDCUserConfig<TwitchProfile, TUser, TSession>
-): OIDCProvider<TwitchProfile, TUser, TSession> {
+export function Twitch<TUser = TwitchProfile>(
+  options: OIDCUserConfig<TwitchProfile, TUser>
+): OIDCProvider<TwitchProfile, TUser> {
   return new OIDCProvider(mergeOIDCOptions(options, TwitchOptions))
 }
