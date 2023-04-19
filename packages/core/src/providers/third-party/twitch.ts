@@ -1,5 +1,5 @@
 import { OIDCProvider, mergeOIDCOptions } from '../core/oidc'
-import type { OIDCDefaultOptions, OIDCUserOptions } from '../core/oidc'
+import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc'
 
 export interface TwitchProfile extends Record<string, any> {
   sub: string
@@ -8,7 +8,7 @@ export interface TwitchProfile extends Record<string, any> {
   picture: string
 }
 
-export const TwitchOptions: OIDCDefaultOptions<TwitchProfile> = {
+export const TwitchOptions: OIDCDefaultConfig<TwitchProfile> = {
   id: 'twitch',
   issuer: 'https://id.twitch.tv/oauth2',
   client: { token_endpoint_auth_method: "client_secret_post" },
@@ -54,7 +54,7 @@ export const TwitchOptions: OIDCDefaultOptions<TwitchProfile> = {
 }
 
 export default function Twitch<TUser = TwitchProfile, TSession = TUser>(
-  options: OIDCUserOptions<TwitchProfile, TUser, TSession>
+  options: OIDCUserConfig<TwitchProfile, TUser, TSession>
 ): OIDCProvider<TwitchProfile, TUser, TSession> {
   return new OIDCProvider(mergeOIDCOptions(options, TwitchOptions))
 }

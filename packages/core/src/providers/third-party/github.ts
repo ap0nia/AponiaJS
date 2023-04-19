@@ -1,5 +1,5 @@
-import { OAuthDefaultOptions, OAuthProvider, mergeOAuthOptions } from "../core/oauth"
-import type { OAuthUserOptions } from "../core/oauth"
+import { OAuthDefaultConfig, OAuthProvider, mergeOAuthOptions } from "../core/oauth"
+import type { OAuthUserConfig } from "../core/oauth"
 
 export interface GitHubEmail {
   email: string
@@ -102,13 +102,8 @@ export interface GitHubProfile {
  *
  * :::
  */
-export default function GitHub<TUser = GitHubProfile, TSession = TUser>(
-  options: OAuthUserOptions<GitHubProfile, TUser, TSession>
-): OAuthProvider<GitHubProfile, TUser, TSession> {
-  return new OAuthProvider(mergeOAuthOptions(options, GitHubOptions))
-}
 
-export const GitHubOptions: OAuthDefaultOptions<GitHubProfile> = {
+export const GitHubOptions: OAuthDefaultConfig<GitHubProfile> = {
   id: 'github',
   endpoints: {
     authorization: {
@@ -144,3 +139,10 @@ export const GitHubOptions: OAuthDefaultOptions<GitHubProfile> = {
     },
   }
 }
+
+export default function GitHub<TUser = GitHubProfile, TSession = TUser>(
+  options: OAuthUserConfig<GitHubProfile, TUser, TSession>
+): OAuthProvider<GitHubProfile, TUser, TSession> {
+  return new OAuthProvider(mergeOAuthOptions(options, GitHubOptions))
+}
+

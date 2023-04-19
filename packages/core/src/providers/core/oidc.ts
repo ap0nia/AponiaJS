@@ -23,7 +23,7 @@ interface Endpoint<TContext = any, TResponse = any> {
   conform?: (response: Response) => Awaitable<Response | undefined>
 }
 
-export interface OIDCDefaultOptions<TProfile> {
+export interface OIDCDefaultConfig<TProfile> {
   id: string
   issuer: string
   client?: Partial<oauth.Client>
@@ -35,7 +35,7 @@ export interface OIDCDefaultOptions<TProfile> {
  * User options. Several can be omitted and filled in by the provider's default options.
  * @external
  */
-export interface OIDCUserOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OIDCUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * Unique ID for the provider.
    */
@@ -101,7 +101,7 @@ interface OIDCUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OIDCOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OIDCConfig<TProfile, TUser = TProfile, TSession = TUser> {
   id: string
   clientId: string
   clientSecret: string
@@ -129,7 +129,7 @@ interface OIDCEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TUser User.
  * @param TSession Session.
  */
-export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implements OIDCOptions<TProfile, TUser, TSession> {
+export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implements OIDCConfig<TProfile, TUser, TSession> {
   id: string
 
   type = "oidc" as const
@@ -154,7 +154,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
 
   onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
 
-  constructor(options: OIDCOptions<TProfile, TUser, TSession>) {
+  constructor(options: OIDCConfig<TProfile, TUser, TSession>) {
     this.id = options.id
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
@@ -297,9 +297,9 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
  * Merge user options with default options.
  */
 export function mergeOIDCOptions(
-  userOptions: OIDCUserOptions<any, any, any>,
-  defaultOptions: OIDCDefaultOptions<any>,
-): OIDCOptions<any, any, any> {
+  userOptions: OIDCUserConfig<any, any, any>,
+  defaultOptions: OIDCDefaultConfig<any>,
+): OIDCConfig<any, any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
   const authorizationOptions = typeof userOptions.endpoints?.authorization === 'object'

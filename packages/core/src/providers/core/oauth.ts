@@ -24,7 +24,7 @@ interface Endpoint<TContext = any, TResponse = any> {
   conform?: (response: Response) => Awaitable<Response | undefined>
 }
 
-export interface OAuthDefaultOptions<TProfile> {
+export interface OAuthDefaultConfig<TProfile> {
   id: string
   checks?: OAuthCheck[]
   client?: Partial<oauth.Client>
@@ -35,7 +35,7 @@ export interface OAuthDefaultOptions<TProfile> {
  * User options. Several can be omitted and filled in by the provider's default options.
  * @external
  */
-export interface OAuthUserOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthUserConfig<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * Unique ID for the provider.
    */
@@ -101,7 +101,7 @@ interface OAuthUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OAuthOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthConfig<TProfile, TUser = TProfile, TSession = TUser> {
   id: string
   clientId: string
   clientSecret: string
@@ -129,7 +129,7 @@ interface OAuthEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TUser User.
  * @param TSession Session.
  */
-export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> implements OAuthOptions<TProfile, TUser, TSession> {
+export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> implements OAuthConfig<TProfile, TUser, TSession> {
   id: string
 
   type = "oauth" as const
@@ -154,7 +154,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
 
   onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
 
-  constructor(options: OAuthOptions<TProfile, TUser, TSession>) {
+  constructor(options: OAuthConfig<TProfile, TUser, TSession>) {
     this.id = options.id
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
@@ -287,9 +287,9 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
  * Merge user options with default options.
  */
 export function mergeOAuthOptions(
-  userOptions: OAuthUserOptions<any, any, any>,
-  defaultOptions: OAuthDefaultOptions<any>,
-): OAuthOptions<any, any, any> {
+  userOptions: OAuthUserConfig<any, any, any>,
+  defaultOptions: OAuthDefaultConfig<any>,
+): OAuthConfig<any, any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
   const authorizationUrl = typeof userOptions.endpoints?.authorization === 'string' 

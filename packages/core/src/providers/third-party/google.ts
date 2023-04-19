@@ -1,5 +1,5 @@
 import { OIDCProvider, mergeOIDCOptions } from '../core/oidc'
-import type { OIDCDefaultOptions, OIDCUserOptions } from '../core/oidc'
+import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc'
 
 export interface GoogleProfile extends Record<string, any> {
   aud: string
@@ -19,13 +19,13 @@ export interface GoogleProfile extends Record<string, any> {
   sub: string
 }
 
-export const GoogleOptions: OIDCDefaultOptions<GoogleProfile> = {
+export const GoogleOptions: OIDCDefaultConfig<GoogleProfile> = {
   id: 'google',
   issuer: 'https://accounts.google.com',
 }
 
 export default function Google<TUser = GoogleProfile, TSession = TUser>(
-  options: OIDCUserOptions<GoogleProfile, TUser, TSession>
+  options: OIDCUserConfig<GoogleProfile, TUser, TSession>
 ): OIDCProvider<GoogleProfile, TUser, TSession> {
   return new OIDCProvider(mergeOIDCOptions(options, GoogleOptions))
 }
