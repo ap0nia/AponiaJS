@@ -10,7 +10,7 @@ type Awaitable<T> = PromiseLike<T> | T
 
 type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
 
-type Tokens = Partial<oauth.OpenIDTokenEndpointResponse>
+type Tokens = Partial<oauth.OAuth2TokenEndpointResponse>
 
 interface Pages {
   login: string
@@ -18,7 +18,6 @@ interface Pages {
 }
 
 interface Endpoint<TContext = any, TResponse = any> {
-  url: string
   params?: Record<string, unknown>
   request?: (context: TContext) => Awaitable<TResponse>
   conform?: (response: Response) => Awaitable<Response | undefined>
@@ -26,8 +25,10 @@ interface Endpoint<TContext = any, TResponse = any> {
 
 export interface OIDCDefaultOptions<TProfile> {
   id: string
+  issuer: string
+  client?: Partial<oauth.Client>
+  endpoints?: Partial<OIDCEndpoints<TProfile, any>>
   checks?: OIDCCheck[]
-  endpoints: OIDCEndpoints<TProfile, any>
 }
 
 /**
@@ -110,7 +111,7 @@ export interface OIDCOptions<TProfile, TUser = TProfile, TSession = TUser> {
   cookies: CookiesOptions
   checks: OIDCCheck[]
   pages: Pages
-  endpoints: OIDCEndpoints<TProfile, TUser, TSession>
+  endpoints?: Partial<OIDCEndpoints<TProfile, TUser, TSession>>
 }
 
 /**
@@ -149,7 +150,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
 
   pages: Pages
 
-  endpoints: OIDCEndpoints<TProfile, TUser, TSession>
+  endpoints?: Partial<OIDCEndpoints<TProfile, TUser, TSession>>
 
   onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
 
@@ -166,12 +167,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
     this.onAuth = options.onAuth
 
     // OAuth doesn't use discovery for authorization server, only OIDC.
-    this.authorizationServer = {
-      issuer: 'auth.js',
-      authorization_endpoint: options.endpoints.authorization.url,
-      token_endpoint: options.endpoints.token.url,
-      userinfo_endpoint: options.endpoints.userinfo.url,
-    }
+    this.authorizationServer = { issuer: 'auth.js', }
   }
 
   setJwtOptions(options: JWTOptions) {
@@ -184,12 +180,30 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
     return this
   }
 
+  async initialize() {
+    const issuer = new URL(this.authorizationServer.issuer)
+    const discoveryResponse = await oauth.discoveryRequest(issuer)
+    const authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
+
+    const supportsPKCE = authorizationServer.code_challenge_methods_supported?.includes('S256')
+    if (this.checks?.includes('pkce') && !supportsPKCE) {
+      this.checks = ['nonce']
+    }
+
+    this.authorizationServer = authorizationServer
+  }
+
   /**
    * Login the user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
     const cookies: Cookie[] = []
-    const url = new URL(this.endpoints.authorization.url)
+
+    if (!this.authorizationServer.authorization_endpoint) {
+      throw new TypeError(`Invalid authorization endpoint. ${this.authorizationServer.authorization_endpoint}`)
+    }
+
+    const url = new URL(this.authorizationServer.authorization_endpoint)
 
     if (this.checks?.includes('state')) {
       const [state, stateCookie] = await checks.state.create(this)
@@ -245,11 +259,11 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
       this.client,
       codeGrantParams,
       `${request.url.origin}${this.pages.callback}`,
-      pkce
+      pkce,
     )
 
     const codeGrantResponse = 
-      await this.endpoints.token.conform?.(initialCodeGrantResponse.clone())
+      await this.endpoints?.token?.conform?.(initialCodeGrantResponse.clone())
       ?? initialCodeGrantResponse
 
     const challenges = oauth.parseWwwAuthenticateChallenges(codeGrantResponse)
@@ -259,23 +273,20 @@ export class OIDCProvider<TProfile, TUser = TProfile, TSession = TUser> implemen
       throw new Error("TODO: Handle www-authenticate challenges as needed")
     }
 
-    const tokens = await oauth.processAuthorizationCodeOAuth2Response(
+    const [nonce, nonceCookie] = await checks.nonce.use(request, this)
+
+    if (nonceCookie) cookies.push(nonceCookie)
+
+    const result = await oauth.processAuthorizationCodeOpenIDResponse(
       this.authorizationServer,
       this.client,
       codeGrantResponse,
+      nonce,
     )
 
-    if (oauth.isOAuth2Error(tokens)) throw new Error("TODO: Handle OAuth 2.0 response body error")
+    if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
 
-    const profile = 
-      await (
-        this.endpoints.userinfo.request?.({ provider: this, tokens }) ??
-        oauth
-          .userInfoRequest(this.authorizationServer, this.client, tokens.access_token)
-          .then(response => response.json())
-      )
-
-    if (!profile) throw new Error("TODO: Handle missing profile")
+    const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
     return await this.onAuth(profile)
   }
@@ -291,25 +302,13 @@ export function mergeOIDCOptions(
 ): OIDCOptions<any, any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
-  const authorizationUrl = typeof userOptions.endpoints?.authorization === 'string' 
-    ? userOptions.endpoints.authorization 
-    : (userOptions.endpoints?.authorization?.url ?? defaultOptions.endpoints.authorization.url)
-
   const authorizationOptions = typeof userOptions.endpoints?.authorization === 'object'
     ? userOptions.endpoints.authorization
     : {}
 
-  const tokenUrl = typeof userOptions.endpoints?.token === 'string'
-    ? userOptions.endpoints.token
-    : (userOptions.endpoints?.token?.url ?? defaultOptions.endpoints.token.url)
-
   const tokenOptions = typeof userOptions.endpoints?.token === 'object'
     ? userOptions.endpoints.token
     : {}
-
-  const userinfoUrl = typeof userOptions.endpoints?.userinfo === 'string'
-    ? userOptions.endpoints.userinfo
-    : (userOptions.endpoints?.userinfo?.url ?? defaultOptions.endpoints.userinfo.url)
 
   const userinfoOptions = typeof userOptions.endpoints?.userinfo === 'object'
     ? userOptions.endpoints.userinfo
@@ -319,6 +318,7 @@ export function mergeOIDCOptions(
     ...userOptions,
     id,
     client: {
+      ...defaultOptions.client,
       ...userOptions.client,
       client_id: userOptions.clientId,
       client_secret: userOptions.clientSecret,
@@ -331,19 +331,16 @@ export function mergeOIDCOptions(
     },
     endpoints: {
       authorization: {
-        ...defaultOptions.endpoints.authorization,
+        ...defaultOptions.endpoints?.authorization,
         ...authorizationOptions,
-        url: authorizationUrl,
       },
       token: {
-        ...defaultOptions.endpoints.token,
+        ...defaultOptions.endpoints?.token,
         ...tokenOptions,
-        url: tokenUrl,
       },
       userinfo: {
-        ...defaultOptions.endpoints.userinfo,
+        ...defaultOptions.endpoints?.userinfo,
         ...userinfoOptions,
-        url: userinfoUrl,
       },
     },
     // default cookie options, manually set later if needed.

@@ -27,6 +27,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 export interface OAuthDefaultOptions<TProfile> {
   id: string
   checks?: OAuthCheck[]
+  client?: Partial<oauth.Client>
   endpoints: OAuthEndpoints<TProfile, any>
 }
 
@@ -319,6 +320,7 @@ export function mergeOAuthOptions(
     ...userOptions,
     id,
     client: {
+      ...defaultOptions.client,
       ...userOptions.client,
       client_id: userOptions.clientId,
       client_secret: userOptions.clientSecret,
