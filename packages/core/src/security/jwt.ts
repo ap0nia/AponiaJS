@@ -25,7 +25,7 @@ export interface JWTOptions {
   decode?: <T>(params: JWTDecodeParams) => Awaitable<T | null>
 }
 
-export interface JWTEncodeParams<T extends Record<string, any> = {}> {
+export interface JWTEncodeParams<T = {}> {
   /**
    * The JWT payload.
    */

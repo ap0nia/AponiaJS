@@ -1,20 +1,86 @@
+import { createCookiesOptions } from "../security/cookie";
+import type { Cookie, CookiesOptions } from "../security/cookie";
+import type { JWTDecodeParams, JWTEncodeParams, JWTOptions } from "../security/jwt";
 import type { InternalRequest } from "../internal/request";
 import type { InternalResponse } from "../internal/response";
 
+type Nullish = undefined | null | void;
+
 type Awaitable<T> = T | PromiseLike<T>;
 
-export interface SessionManagerConfig<TUser, TSession> {
-  getUserFromSession?: (session: TSession) => Awaitable<TUser | undefined | null | void> 
-  createSessionFromUser?: (user: TUser) => Awaitable<TSession | undefined | null | void> 
+type Strategy = 'jwt' | 'session'
+
+type JwtSessionOptions<TUser> = {
+  encode: (params: JWTEncodeParams<TUser>) => Awaitable<string>
+  decode: <T>(params: JWTDecodeParams) => Awaitable<T | Nullish>
+  createRefreshToken: (user: TUser) => Awaitable<string | Nullish>
 }
 
-export class SessionManager<TUser = {}, TSession = {}> implements SessionManagerConfig<TUser, TSession> {
-  getUserFromSession: (session: TSession) => Awaitable<TUser | undefined | null | void> 
-  createSessionFromUser: (user: TUser) => Awaitable<TSession | undefined | null | void> 
+export type SessionManagerConfig<TStrategy extends Strategy, TUser, TSession> = {
+  strategy: TStrategy
+  secret: string
+  jwt?: Omit<JWTOptions, 'secret'>
+  useSessionCookies?: boolean
+  getUserFromSession?: (session: TSession) => Awaitable<TUser | Nullish> 
+  createSessionFromUser?: (user: TUser) => Awaitable<TSession | Nullish> 
+} & (TStrategy extends 'jwt' ? JwtSessionOptions<TUser> : object)
 
-  constructor(config: SessionManagerConfig<TUser, TSession>) {
+export class SessionManager<TStrategy extends Strategy, TUser = {}, TSession = {}> {
+  strategy: TStrategy
+
+  secret: string
+
+  cookies: CookiesOptions
+
+  jwt: Omit<JWTOptions, 'secret'>
+
+  createRefeshToken: (user: TUser) => Awaitable<string | Nullish>
+
+  getUserFromSession: (session: TSession) => Awaitable<TUser | Nullish> 
+
+  createSessionFromUser: (user: TUser) => Awaitable<TSession | Nullish> 
+
+  encode: (params: JWTEncodeParams<TUser>) => Awaitable<string>
+
+  decode: <T>(params: JWTDecodeParams) => Awaitable<T | Nullish>
+
+  constructor(config: SessionManagerConfig<TStrategy, TUser, TSession>) {
+    this.strategy = config.strategy;
+    this.secret = config.secret;
+    this.cookies = createCookiesOptions(config.useSessionCookies);
+    this.jwt = { ...config.jwt }
     this.getUserFromSession = config.getUserFromSession ?? (() => undefined);
     this.createSessionFromUser = config.createSessionFromUser ?? (() => undefined);
+    this.encode = 'encode' in config ? config.encode : (() => '');
+    this.decode = 'decode' in config ? config.decode : (() => null);
+    this.createRefeshToken = 'createRefreshToken' in config
+      ? config.createRefreshToken 
+      : (() => undefined);
+  }
+
+  async createJwtCookies(user: TUser): Promise<Cookie[]> {
+    return [
+      {
+        name: this.cookies.accessToken.name,
+        value: await this.encode({ ...this.jwt, secret: this.secret, token: user }),
+        options: this.cookies.accessToken.options
+      },
+      {
+        name: this.cookies.refreshToken.name,
+        value: (await this.createRefeshToken(user)) || '',
+        options: this.cookies.refreshToken.options
+      }
+    ]
+  }
+
+  async createSessionCookies(session: TSession): Promise<Cookie[]> {
+    return [
+      {
+        name: this.cookies.sessionToken.name,
+        value: String(session),
+        options: this.cookies.sessionToken.options,
+      }
+    ]
   }
 
   /**
@@ -51,12 +117,14 @@ export class SessionManager<TUser = {}, TSession = {}> implements SessionManager
      * if the response has a session and the request didn't have one,
      * create a new session cookie.
      */
-    if (response.session && !request.session) {
+    if (response.session && !request.session && this.strategy === 'session') {
       response.cookies ??= []
-      response.cookies.push({
-        name: '',
-        value: '',
-      })
+      response.cookies.concat(await this.createSessionCookies(response.session))
+    }
+
+    if (response.user && !request.user && this.strategy === 'jwt') {
+      response.cookies ??= []
+      response.cookies.concat(await this.createJwtCookies(response.user))
     }
 
     /**
@@ -68,5 +136,29 @@ export class SessionManager<TUser = {}, TSession = {}> implements SessionManager
     }
 
     return response;
+  }
+
+    /**
+   * Invalidate a session.
+   */
+  async invalidateSession(request: InternalRequest): Promise<InternalResponse> {
+    const userSession = request.session ?? await this.getRequestSession(request)
+    await this.onInvalidate(userSession)
+    return {
+      redirect: '/',
+      status: 302,
+      cookies: [
+        {
+          name: this.cookies.sessionToken.name,
+          value: '',
+          options: { maxAge: 0, path: '/' }
+        },
+        {
+          name: this.cookies.refreshToken.name,
+          value: '',
+          options: { maxAge: 0, path: '/' }
+        },
+      ],
+    }
   }
 }
