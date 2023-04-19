@@ -5,17 +5,13 @@ import type { Cookie, CookiesOptions } from '../../security/cookie'
 import type { JWTOptions } from '../../security/jwt'
 import type { InternalRequest } from '../../internal/request'
 import type { InternalResponse } from '../../internal/response'
+import type { Pages } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
 type OAuthCheck = 'pkce' | 'state' | 'none' | 'nonce'
 
 type TokenSet = Partial<oauth.OAuth2TokenEndpointResponse>
-
-interface Pages {
-  login: string
-  callback: string
-}
 
 interface Endpoint<TContext = any, TResponse = any> {
   url: string
