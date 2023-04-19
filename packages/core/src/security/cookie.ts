@@ -1,12 +1,37 @@
-import type { CookieOption, CookiesOptions } from "@auth/core/types"
+import type { CookieSerializeOptions } from "cookie"
 
-export interface InternalCookiesOptions extends CookiesOptions { refreshToken: CookieOption }
+/**
+ * Internally generated cookies.
+ * @internal
+ */
+export interface Cookie {
+  name: string
+  value: string
+  options?: CookieSerializeOptions
+}
 
-export function defaultCookies(useSecureCookies: boolean = false): InternalCookiesOptions {
+
+export interface CookieOption {
+  name: string
+  options: CookieSerializeOptions
+}
+
+export interface CookiesOptions { 
+  callbackUrl: CookieOption
+  csrfToken: CookieOption
+  pkceCodeVerifier: CookieOption
+  state: CookieOption
+  nonce: CookieOption
+  sessionToken: CookieOption
+  accessToken: CookieOption
+  refreshToken: CookieOption
+}
+
+export function createCookiesOptions(useSecureCookies: boolean = false): CookiesOptions {
   const cookiePrefix = useSecureCookies ? "__Secure-" : ""
   return {
-    refreshToken: {
-      name: `${cookiePrefix}next-auth.refresh-token`,
+    sessionToken: {
+      name: `${cookiePrefix}next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -14,8 +39,17 @@ export function defaultCookies(useSecureCookies: boolean = false): InternalCooki
         secure: useSecureCookies,
       },
     },
-    sessionToken: {
-      name: `${cookiePrefix}next-auth.session-token`,
+    accessToken: {
+      name: `${cookiePrefix}next-auth.access-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+    refreshToken: {
+      name: `${cookiePrefix}next-auth.refresh-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",

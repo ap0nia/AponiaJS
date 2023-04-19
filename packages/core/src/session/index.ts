@@ -1,10 +1,12 @@
-import type { Awaitable } from '@auth/core/types'
 import { encode, decode } from '../security/jwt'
-import { defaultCookies } from '../security/cookie'
-import type { InternalCookiesOptions } from '../security/cookie'
+import { createCookiesOptions } from '../security/cookie'
+import type { Cookie } from '../security/cookie'
+import type { CookiesOptions } from '../security/cookie'
 import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from '../security/jwt'
 import type { InternalRequest } from '../internal/request'
-import type { InternalCookie, InternalResponse } from '../internal/response'
+import type { InternalResponse } from '../internal/response'
+
+type Awaitable<T> = T | PromiseLike<T>
 
 export interface SessionManagerConfig<TUser, TSession> {
   secret: string
@@ -46,7 +48,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = {
   /**
    * Cookie options for each type of cookie created.
    */
-  cookies: InternalCookiesOptions
+  cookies: CookiesOptions
 
   /**
    * Encode a JWT token.
@@ -77,7 +79,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = {
   constructor(config: SessionManagerConfig<TUser, TSession>) {
     this.secret = config.secret
     this.jwt = { ...config.jwt, secret: config.secret }
-    this.cookies = defaultCookies(config.useSecureCookies)
+    this.cookies = createCookiesOptions(config.useSecureCookies)
     this.encode = config.jwt?.encode ?? encode
     this.decode = config.jwt?.decode ?? decode
     this.getUserFromSession = config.getUserFromSession ?? ((session) => session as any)
@@ -106,7 +108,7 @@ export class SessionManager<TUser = {}, TSession extends Record<string, any> = {
   /**
    * Create a session cookie.
    */
-  async createSessionCookie(session: TSession): Promise<InternalCookie> {
+  async createSessionCookie(session: TSession): Promise<Cookie> {
     return {
       name: this.cookies.sessionToken.name,
       value: await this.createSessionToken(session),
