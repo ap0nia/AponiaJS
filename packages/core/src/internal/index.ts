@@ -23,7 +23,7 @@ type AnyProvider<T> =
 /**
  * Configuration.
  */
-export interface AuthConfig<TUser, TSession> {
+export interface AuthConfig<TUser, TSession, TRefresh = undefined> {
   /**
    * List of providers.
    */
@@ -32,7 +32,7 @@ export interface AuthConfig<TUser, TSession> {
   /**
    * Session.
    */
-  session: TokenSessionManager<TUser, TSession>
+  session: TokenSessionManager<TUser, TSession, TRefresh>
 
   /**
    * Designated auth pages.
@@ -43,7 +43,7 @@ export interface AuthConfig<TUser, TSession> {
 /**
  * Aponia Auth!
  */
-export class Auth<TUser, TSession> {
+export class Auth<TUser, TSession, TRefresh = undefined> {
   /**
    * List of providers.
    */
@@ -52,7 +52,7 @@ export class Auth<TUser, TSession> {
   /**
    * Session manager.
    */
-  session: TokenSessionManager<TUser, TSession>
+  session: TokenSessionManager<TUser, TSession, TRefresh>
 
   /**
    * Static auth pages not associated with any provider.
@@ -67,7 +67,7 @@ export class Auth<TUser, TSession> {
     callback: Map<string, AnyProvider<TUser>>
   }
 
-  constructor(config: AuthConfig<TUser, TSession>) {
+  constructor(config: AuthConfig<TUser, TSession, TRefresh>) {
     this.providers = config.providers
 
     this.session = config.session

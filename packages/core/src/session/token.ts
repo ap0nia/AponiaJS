@@ -2,6 +2,7 @@ import { encode, decode } from "../security/jwt";
 import type { JWTOptions } from "../security/jwt";
 import type { InternalRequest } from "../internal/request";
 import type { InternalResponse } from "../internal/response";
+import { createCookiesOptions } from "../security/cookie";
 import type { Cookie, CookiesOptions } from "../security/cookie";
 import { parse } from "cookie";
 
@@ -20,10 +21,10 @@ type TokenMaxAge = {
   refreshToken: number
 }
 
-export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = TSession> {
+export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   secret: string
 
-  jwt: Omit<JWTOptions, 'maxAge'>
+  jwt?: Omit<JWTOptions, 'maxAge'>
 
   /**
    * Max age of the access and refresh tokens.
@@ -33,7 +34,7 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = TSession
   /**
    * Cookie options for the access and refresh tokens.
    */
-  cookies: CookiesOptions
+  useSecureCookies?: boolean
 
   /**
    * Create a new session from a user.
@@ -52,7 +53,7 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = TSession
 }
 
 export class TokenSessionManager<
-  TUser, TSession = TUser, TRefresh = TSession
+  TUser, TSession = TUser, TRefresh = undefined
 > implements TokenSessionConfig<TUser, TSession, TRefresh> {
   secret: string
 
@@ -78,7 +79,7 @@ export class TokenSessionManager<
       accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
       refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,
     }
-    this.cookies = config.cookies;
+    this.cookies = createCookiesOptions(config.useSecureCookies)
     this.createSession = config.createSession;
     this.refreshSession = config.refreshSession;
     this.onInvalidateSession = config.onInvalidateSession;
