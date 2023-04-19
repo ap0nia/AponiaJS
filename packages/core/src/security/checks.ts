@@ -4,10 +4,11 @@ import type { JWTOptions } from "./jwt"
 import type { Cookie, CookieOption } from "./cookie"
 import type { OAuthProvider } from "../providers/core/oauth"
 import type { InternalRequest } from '../internal/request'
+import { OIDCProvider } from '../providers/core/oidc'
 
 type CheckPayload = { value: string }
 
-type AnyOAuthProvider = OAuthProvider<any>
+type AnyOAuthProvider = OAuthProvider<any> | OIDCProvider<any>
 
 // 15 minutes in seconds
 const PKCE_MAX_AGE = 60 * 15

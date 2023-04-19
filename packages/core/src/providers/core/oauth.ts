@@ -24,7 +24,7 @@ interface Endpoint<TContext = any, TResponse = any> {
   conform?: (response: Response) => Awaitable<Response | undefined>
 }
 
-export interface OAuthProviderDefaultOptions<TProfile> {
+export interface OAuthDefaultOptions<TProfile> {
   id: string
   checks?: OAuthCheck[]
   endpoints: OAuthEndpoints<TProfile, any>
@@ -34,7 +34,7 @@ export interface OAuthProviderDefaultOptions<TProfile> {
  * User options. Several can be omitted and filled in by the provider's default options.
  * @external
  */
-export interface OAuthProviderUserOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthUserOptions<TProfile, TUser = TProfile, TSession = TUser> {
   /**
    * Unique ID for the provider.
    */
@@ -100,7 +100,7 @@ interface OAuthUserEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OAuthProviderOptions<TProfile, TUser = TProfile, TSession = TUser> {
+export interface OAuthOptions<TProfile, TUser = TProfile, TSession = TUser> {
   id: string
   clientId: string
   clientSecret: string
@@ -128,7 +128,7 @@ interface OAuthEndpoints<TProfile, TUser = TProfile, TSession = TUser> {
  * @param TUser User.
  * @param TSession Session.
  */
-export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> implements OAuthProviderOptions<TProfile, TUser, TSession> {
+export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> implements OAuthOptions<TProfile, TUser, TSession> {
   id: string
 
   type = "oauth" as const
@@ -153,7 +153,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
 
   onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser, TSession>>
 
-  constructor(options: OAuthProviderOptions<TProfile, TUser, TSession>) {
+  constructor(options: OAuthOptions<TProfile, TUser, TSession>) {
     this.id = options.id
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
@@ -183,11 +183,6 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
     this.cookies = options
     return this
   }
-
-  /**
-   * Initialize the provider. Only OIDC needs this to discover the authorization server.
-   */
-  async initialize() {}
 
   /**
    * Login the user.
@@ -291,9 +286,9 @@ export class OAuthProvider<TProfile, TUser = TProfile, TSession = TUser> impleme
  * Merge user options with default options.
  */
 export function mergeOAuthOptions(
-  userOptions: OAuthProviderUserOptions<any, any, any>,
-  defaultOptions: OAuthProviderDefaultOptions<any>,
-): OAuthProviderOptions<any, any, any> {
+  userOptions: OAuthUserOptions<any, any, any>,
+  defaultOptions: OAuthDefaultOptions<any>,
+): OAuthOptions<any, any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
   const authorizationUrl = typeof userOptions.endpoints?.authorization === 'string' 
