@@ -11,6 +11,7 @@ import type { OIDCProvider } from "../providers/core/oidc"
  * Static auth pages.
  */
 type Pages = {
+  signInRedirect: string
   signOut: string
   session: string
 }
@@ -81,6 +82,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     this.session = config.session
 
     this.pages = {
+      signInRedirect: config.pages?.signInRedirect ?? '/',
       signOut: config.pages?.signOut ?? '/auth/logout',
       session: config.pages?.session ?? '/auth/session',
     }
@@ -117,11 +119,19 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     const signinHandler = this.routes.login.get(pathname)
     if (signinHandler) {
       response = await signinHandler.login(internalRequest)
+      if (!response.redirect) {
+        response.redirect = this.pages.signInRedirect
+        response.status = 302
+      }
     }
 
     const callbackHandler = this.routes.callback.get(pathname)
     if (callbackHandler) {
       response = await callbackHandler.callback(internalRequest)
+      if (!response.redirect) {
+        response.redirect = this.pages.signInRedirect
+        response.status = 302
+      }
     }
 
     if (refreshResponse.cookies?.length) {
