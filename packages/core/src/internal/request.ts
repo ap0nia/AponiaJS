@@ -1,9 +1,24 @@
 import { parse } from "cookie"
 
 export interface InternalRequest<T = any> {
+  /**
+   * User created during refresh.
+   */
   user?: T
+
+  /**
+   * Original request.
+   */
   request: Request
+
+  /**
+   * Parsed request URL.
+   */
   url: URL
+
+  /**
+   * Parsed cookies from original request cookie headers.
+   */
   cookies: Record<string, string>
 }
 

@@ -192,7 +192,8 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
     const url = new URL(this.endpoints.authorization.url)
     const cookies: Cookie[] = []
 
-    Object.entries(this.endpoints?.authorization?.params ?? {}).forEach(([key, value]) => {
+    const params = this.endpoints.authorization.params ?? {}
+    Object.entries(params).forEach(([key, value]) => {
       if (typeof value === 'string') {
         url.searchParams.set(key, value)
       }

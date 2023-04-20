@@ -1,0 +1,36 @@
+{
+  "name": "@aponia/integrations-sveltekit",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "rimraf dist && tsc"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "^1.15.5",
+    "svelte": "^3.58.0",
+    "vite": "^4.2.1"
+  },
+  "dependencies": {
+    "aponia": "*"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^1.15.5",
+    "@types/node": "^18.15.11",
+    "rimraf": "^5.0.0",
+    "svelte": "^3.58.0",
+    "typescript": "^5.0.4",
+    "vite": "^4.2.1"
+  }
+}

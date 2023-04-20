@@ -1,7 +1,8 @@
 import { EncryptJWT, jwtDecrypt } from "jose";
 import type { JWTPayload } from "jose";
 import { hkdf } from "@panva/hkdf";
-import type { Awaitable } from "@auth/core/types";
+
+type Awaitable<T> = T | PromiseLike<T>;
 
 const DefaultMaxAge = 30 * 24 * 60 * 60;
 

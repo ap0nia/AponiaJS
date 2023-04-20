@@ -1,4 +1,4 @@
-export * from './internal'
+export * from './internal/index'
 
 export * from './session/token'
 export * from './session/database'

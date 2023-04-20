@@ -1,11 +1,14 @@
-import { redirect } from '@sveltejs/kit'
-import type { Handle } from '@sveltejs/kit'
 import { Aponia, GitHub, Google, TokenSession } from 'aponia'
+import createHandle from '@aponia/integrations-sveltekit'
+import { sequence } from '@sveltejs/kit/hooks'
+import type { Handle } from '@sveltejs/kit'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
+import db from './lib/server/db'
+import { employees } from '$drizzle/schema'
+import { eq } from 'drizzle-orm'
 
 interface User {
   id: number
-  name: string
 }
 
 interface Session extends User {}
@@ -15,13 +18,14 @@ interface Refresh extends User {}
 const auth = Aponia<User, Session, Refresh>({
   session: TokenSession({
     secret: 'secret',
-    createSession(user) {
+    createSession: async (user) => {
       return { accessToken: user, refreshToken: user }
     },
-    refreshSession(refreshToken) {
-      return { accessToken: refreshToken, refreshToken }
+    handleRefresh: async (tokens) => {
+      if (tokens.accessToken) return
+      if (!tokens.refreshToken) return
     },
-    onInvalidateSession(session) {
+    onInvalidateSession: async (session) => {
       console.log('invalidating session: ', session)
     },
   }),
@@ -29,18 +33,15 @@ const auth = Aponia<User, Session, Refresh>({
     GitHub({ 
       clientId: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
-      onAuth(user) {
-        user.id
-        user.bio
-        user.email
-        // ...
-        return { user: { id: 100, name: user.url }}
+      onAuth: async (user) => {
+        const foundUser = db.select().from(employees).where(eq(employees.id, 1)).get()
+        return { user: foundUser }
       },
     }),
     Google({ 
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      onAuth(user) {
+      onAuth: async (user) => {
         user.email
         user.name
         user.family_name
@@ -51,25 +52,11 @@ const auth = Aponia<User, Session, Refresh>({
   ],
 })
 
-export const handle: Handle = async ({ event, resolve }) => {
-  const internalResponse = await auth.handle(event.request)
+export const authHandle = createHandle(auth)
 
-  if (internalResponse == null) {
-    return await resolve(event)
-  }
-
-  if (internalResponse.cookies != null) {
-    internalResponse.cookies.forEach((cookie) => {
-      event.cookies.set(cookie.name, cookie.value, cookie.options)
-    })
-  }
-
-  if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
-    throw redirect(internalResponse.status, internalResponse.redirect)
-  }
-
+export const customHandle: Handle = async ({ event, resolve }) => {
+  // const allEmployees = db.select().from(employees).all()
   return await resolve(event)
 }
 
-const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
-  status != null && status >= 300 && status < 400
+export const handle = sequence(authHandle, customHandle)
