@@ -1,19 +1,22 @@
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
-import type { TokenSessionManager } from "../session/token"
+import type { AnySessionManager } from "../session"
 import type { CredentialsProvider } from "../providers/core/credentials"
 import type { EmailProvider } from "../providers/core/email"
 import type { OAuthProvider } from "../providers/core/oauth"
 import type { OIDCProvider } from "../providers/core/oidc"
 
 /**
- * Designated static auth pages.
+ * Static auth pages.
  */
 interface Pages {
   signOut: string
   session: string
 }
 
+/**
+ * Any core provider.
+ */
 type AnyProvider<T> = 
   | OAuthProvider<any, T> 
   | OIDCProvider<any, T> 
@@ -25,17 +28,17 @@ type AnyProvider<T> =
  */
 export interface AuthConfig<TUser, TSession, TRefresh = undefined> {
   /**
-   * List of providers.
+   * Providers, each has assigned routes.
    */
   providers: AnyProvider<TUser>[]
 
   /**
-   * Session.
+   * Session handler.
    */
-  session: TokenSessionManager<TUser, TSession, TRefresh>
+  session: AnySessionManager<TUser, TSession, TRefresh>
 
   /**
-   * Designated auth pages.
+   * Static auth pages.
    */
   pages?: Partial<Pages>
 }
@@ -45,22 +48,22 @@ export interface AuthConfig<TUser, TSession, TRefresh = undefined> {
  */
 export class Auth<TUser, TSession, TRefresh = undefined> {
   /**
-   * List of providers.
+   * Providers.
    */
   providers: AnyProvider<TUser>[]
 
   /**
-   * Session manager.
+   * Session handler.
    */
-  session: TokenSessionManager<TUser, TSession, TRefresh>
+  session: AnySessionManager<TUser, TSession, TRefresh>
 
   /**
-   * Static auth pages not associated with any provider.
+   * Static auth routes.
    */
   pages: Pages
 
   /**
-   * Routes. Generate internal response on match.
+   * Dynamic auth routes.
    */
   routes: {
     login: Map<string, AnyProvider<TUser>>
@@ -95,7 +98,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    */
   async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
-    const refreshResponse = await this.session.handleRefresh(internalRequest)
+    const refreshResponse = await this.session.handleRequest(internalRequest)
     const { pathname } = internalRequest.url
 
     switch (pathname) {
@@ -120,8 +123,6 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       response.cookies ??= []
       response.cookies.push(...refreshResponse.cookies)
     }
-
-    console.log({ response })
 
     return await this.session.handleResponse(response)
   }

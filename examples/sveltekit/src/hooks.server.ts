@@ -1,8 +1,7 @@
 import { redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
-import { Auth, GitHub, Google } from 'aponia'
+import { Auth, GitHub, Google, Session } from 'aponia'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
-import { TokenSessionManager } from 'aponia/dist/session/token'
 
 interface User {
   id: number
@@ -11,16 +10,19 @@ interface User {
 
 interface Session extends User {}
 
-interface Refresh {}
+interface Refresh extends User {}
 
 const auth = new Auth<User, Session, Refresh>({
-  session: new TokenSessionManager({
+  session: Session('jwt', {
     secret: 'secret',
-    createSession(session) {
-      return { session, refresh: {} }
+    createSession(user) {
+      return { accessToken: user, refreshToken: user }
     },
-    refreshSession(refresh) {
-      // console.log({ refresh: '' })
+    refreshSession(refreshToken) {
+      return { accessToken: refreshToken, refreshToken }
+    },
+    onInvalidateSession(session) {
+      console.log('invalidating session: ', session)
     },
   }),
   providers: [
@@ -28,6 +30,10 @@ const auth = new Auth<User, Session, Refresh>({
       clientId: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
       onAuth(user) {
+        user.id
+        user.bio
+        user.email
+        // ...
         return { user: { id: 100, name: user.url }}
       },
     }),
@@ -35,6 +41,10 @@ const auth = new Auth<User, Session, Refresh>({
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
       onAuth(user) {
+        user.email
+        user.name
+        user.family_name
+        // ...
         return { user: { id: 69, name: user.name }}
       },
     }),

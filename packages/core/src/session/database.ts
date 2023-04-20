@@ -21,7 +21,7 @@ type TokenMaxAge = {
   refreshToken: number
 }
 
-export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
+export interface DatabaseSessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Secret used to sign the tokens.
    */
@@ -58,9 +58,9 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefine
   onInvalidateSession?: (session: TSession, refresh?: TRefresh | Nullish) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
-export class TokenSessionManager<
+export class DatabaseSessionManager<
   TUser, TSession = TUser, TRefresh = undefined
-> implements TokenSessionConfig<TUser, TSession, TRefresh> {
+> implements DatabaseSessionConfig<TUser, TSession, TRefresh> {
   secret: string
 
   jwt: Omit<JWTOptions, 'maxAge'>
@@ -79,7 +79,7 @@ export class TokenSessionManager<
 
   onInvalidateSession?: (session: TSession, refresh?: TRefresh | Nullish) => Awaitable<InternalResponse<TUser> | Nullish>
 
-  constructor(config: TokenSessionConfig<TUser, TSession, TRefresh>) {
+  constructor(config: DatabaseSessionConfig<TUser, TSession, TRefresh>) {
     this.secret = config.secret;
     this.jwt = {
       ...config.jwt,
@@ -133,6 +133,7 @@ export class TokenSessionManager<
     return cookies
   }
 
+
   async handleRequest(request: InternalRequest<TUser>): Promise<InternalResponse<TUser>> {
     const accessToken = request.cookies[this.cookies.accessToken.name]
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
@@ -141,7 +142,34 @@ export class TokenSessionManager<
 
     if (!accessToken && refreshToken && refresh) {
       const newSession = await this.refreshSession(refresh)
-      return { cookies: await this.createCookies(newSession) }
+
+      const cookies: Cookie[] = []
+
+      if (newSession?.accessToken) {
+        cookies.push({
+          name: this.cookies.accessToken.name,
+          value: await this.encode({ 
+            secret: this.secret,
+            maxAge: this.maxAge.accessToken,
+            token: newSession.accessToken
+          }),
+          options: this.cookies.accessToken.options
+        })
+      }
+
+      if (newSession?.refreshToken) {
+        cookies.push({
+          name: this.cookies.refreshToken.name,
+          value: await this.encode({
+            secret: this.secret,
+            maxAge: this.maxAge.refreshToken,
+            token: newSession.refreshToken
+          }),
+          options: this.cookies.refreshToken.options
+        })
+      }
+
+      return { cookies }
     }
 
     return {}
@@ -150,10 +178,33 @@ export class TokenSessionManager<
   async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser>> {
     if (!response.user) return response
 
+    response.cookies ??= []
+
     const newSession = await this.createSession(response.user)
 
-    response.cookies ??= []
-    response.cookies.push(...await this.createCookies(newSession))
+    if (newSession?.accessToken) {
+      response.cookies.push({
+        name: this.cookies.accessToken.name,
+        value: await this.encode({ 
+          secret: this.secret,
+          maxAge: this.maxAge.accessToken,
+          token: newSession.accessToken
+        }),
+        options: this.cookies.accessToken.options
+      })
+    }
+
+    if (newSession?.refreshToken) {
+      response.cookies.push({
+        name: this.cookies.refreshToken.name,
+        value: await this.encode({ 
+          secret: this.secret,
+          maxAge: this.maxAge.refreshToken,
+          token: newSession.refreshToken
+        }),
+        options: this.cookies.refreshToken.options
+      })
+    }
 
     return response
   }
@@ -177,24 +228,13 @@ export class TokenSessionManager<
     const session = await this.decode<TSession>({ secret: this.secret, token: accessToken })
     const refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
 
-    const response = session
-      ? (await this.onInvalidateSession?.(session, refresh)) ?? {}
-      : {}
+    if (session) await this.onInvalidateSession?.(session, refresh)
 
-    response.cookies ??= []
-    response.cookies.push(
-      {
-        name: this.cookies.accessToken.name,
-        value: "",
-        options: { ...this.cookies.accessToken.options, maxAge: 0, }
-      }, 
-      {
-        name: this.cookies.refreshToken.name,
-        value: "",
-        options: { ...this.cookies.refreshToken.options, maxAge: 0, }
-      }
-    )
-
-    return response
+    return {
+      cookies: [
+        { name: this.cookies.accessToken.name, value: "", options: { maxAge: 0 } },
+        { name: this.cookies.refreshToken.name, value: "", options: { maxAge: 0 } }
+      ]
+    }
   }
 }

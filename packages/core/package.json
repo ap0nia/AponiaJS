@@ -14,10 +14,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./dist/session/token": {
-      "types": "./dist/session/token.d.ts",
-      "default": "./dist/session/token.js"
     }
   },
   "dependencies": {
