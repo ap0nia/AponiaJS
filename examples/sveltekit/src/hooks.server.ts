@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
-import { Auth, GitHub, Google, Session } from 'aponia'
+import { Aponia, GitHub, Google, TokenSession } from 'aponia'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
 
 interface User {
@@ -12,8 +12,8 @@ interface Session extends User {}
 
 interface Refresh extends User {}
 
-const auth = new Auth<User, Session, Refresh>({
-  session: Session('jwt', {
+const auth = Aponia<User, Session, Refresh>({
+  session: TokenSession({
     secret: 'secret',
     createSession(user) {
       return { accessToken: user, refreshToken: user }
