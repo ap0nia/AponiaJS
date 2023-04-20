@@ -1,10 +1,8 @@
 export * from './internal'
 
-export * from './session'
 export * from './session/token'
 export * from './session/database'
 
-export * from './providers/core'
 export * from './providers/core/credentials'
 export * from './providers/core/email'
 export * from './providers/core/oauth'

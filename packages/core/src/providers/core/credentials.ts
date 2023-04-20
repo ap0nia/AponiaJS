@@ -1,11 +1,14 @@
-import { Pages } from ".";
 import type { InternalRequest } from "../../internal/request";
 import type { InternalResponse } from "../../internal/response";
 import type { CookiesOptions } from "../../security/cookie";
 import type { JWTOptions } from "../../security/jwt";
-import type { Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
+
+interface Pages {
+  login: string
+  callback: string
+}
 
 export interface CredentialsConfig<T>  {
   /**
@@ -22,12 +25,12 @@ export interface CredentialsConfig<T>  {
 /**
  * Credentials provider (first-party only).
  */
-export class CredentialsProvider<T> implements Provider<InternalRequest, T> {
+export class CredentialsProvider<T> {
   id = 'credentials' as const
 
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
-
   pages: Pages
+
+  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
 
   constructor(config: CredentialsConfig<T>) {
     this.onAuth = config.onAuth

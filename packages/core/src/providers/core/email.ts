@@ -1,11 +1,14 @@
-import { Pages } from ".";
 import type { InternalRequest } from "../../internal/request";
 import type { InternalResponse } from "../../internal/response";
 import type { CookiesOptions } from "../../security/cookie";
 import type { JWTOptions } from "../../security/jwt";
-import type { Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
+
+interface Pages {
+  login: string
+  callback: string
+}
 
 export interface EmailConfig<TUser>  {
   /**
@@ -22,7 +25,7 @@ export interface EmailConfig<TUser>  {
 /**
  * Email provider (first-party only).
  */
-export class EmailProvider<T> implements Provider<InternalRequest, T> {
+export class EmailProvider<T> {
   id = 'credentials' as const
 
   onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>

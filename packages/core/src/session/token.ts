@@ -198,3 +198,9 @@ export class TokenSessionManager<
     return response
   }
 }
+
+export function TokenSession<TUser, TSession = TUser, TRefresh = undefined>(
+  config: TokenSessionConfig<TUser, TSession, TRefresh>
+): TokenSessionManager<TUser, TSession, TRefresh> {
+  return new TokenSessionManager(config)
+}

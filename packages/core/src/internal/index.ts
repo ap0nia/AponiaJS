@@ -1,6 +1,7 @@
 import { toInternalRequest } from "./request"
 import type { InternalResponse } from "./response"
-import type { AnySessionManager } from "../session"
+import type { TokenSessionManager } from "../session/token"
+import type { DatabaseSessionManager } from "../session/database"
 import type { CredentialsProvider } from "../providers/core/credentials"
 import type { EmailProvider } from "../providers/core/email"
 import type { OAuthProvider } from "../providers/core/oauth"
@@ -22,6 +23,10 @@ type AnyProvider<T> =
   | OIDCProvider<any, T> 
   | CredentialsProvider<T> 
   | EmailProvider<T>
+
+type AnySessionManager<TUser, TSession, TRefresh> =
+  | TokenSessionManager<TUser, TSession, TRefresh>
+  | DatabaseSessionManager<TUser, TSession, TRefresh>
 
 /**
  * Configuration.

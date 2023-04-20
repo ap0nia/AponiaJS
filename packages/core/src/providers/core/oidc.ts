@@ -5,13 +5,17 @@ import type { Cookie, CookiesOptions } from '../../security/cookie'
 import type { JWTOptions } from '../../security/jwt'
 import type { InternalRequest } from '../../internal/request'
 import type { InternalResponse } from '../../internal/response'
-import type { Pages, Provider } from '.'
 
 type Awaitable<T> = PromiseLike<T> | T
 
 type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
 
 type Tokens = Partial<oauth.OAuth2TokenEndpointResponse>
+
+interface Pages {
+  login: string
+  callback: string
+}
 
 interface Endpoint<TContext = any, TResponse = any> {
   params?: Record<string, unknown>
@@ -97,7 +101,7 @@ interface OIDCUserEndpoints<TProfile, TUser = TProfile> {
  * Internal options. All options are generally defined.
  * @internal
  */
-export interface OIDCConfig<TProfile, TUser = TProfile> extends Provider<TProfile, TUser> {
+export interface OIDCConfig<TProfile, TUser = TProfile> {
   id: string
   issuer: string
   clientId: string
@@ -108,6 +112,7 @@ export interface OIDCConfig<TProfile, TUser = TProfile> extends Provider<TProfil
   checks: OIDCCheck[]
   pages: Pages
   endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
 }
 
 /**
