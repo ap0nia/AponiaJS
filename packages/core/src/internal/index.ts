@@ -34,12 +34,12 @@ type AnySessionManager<TUser, TSession, TRefresh> =
  */
 export interface AuthConfig<TUser, TSession, TRefresh = undefined> {
   /**
-   * Providers, each has assigned routes.
+   * Providers.
    */
   providers: AnyProvider<TUser>[]
 
   /**
-   * Session handler.
+   * Session manager.
    */
   session: AnySessionManager<TUser, TSession, TRefresh>
 

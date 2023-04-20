@@ -50,7 +50,9 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefine
   /**
    * Refresh a session from a refresh token.
    */
-  refreshSession: (refresh: TRefresh) => Awaitable<NewSession<TSession, TRefresh> | Nullish>;
+  handleRefresh: (
+    tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
+  ) => Awaitable<NewSession<TSession, TRefresh> | Nullish>;
 
   /**
    * Invalidate a session.
@@ -75,7 +77,9 @@ export class TokenSessionManager<
 
   createSession: (user: TUser) => Awaitable<NewSession<TSession, TRefresh>>;
 
-  refreshSession: (refresh: TRefresh) => Awaitable<NewSession<TSession, TRefresh> | Nullish>;
+  handleRefresh: (
+    tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
+  ) => Awaitable<NewSession<TSession, TRefresh> | Nullish>;
 
   onInvalidateSession?: (session: TSession, refresh?: TRefresh | Nullish) => Awaitable<InternalResponse<TUser> | Nullish>
 
@@ -93,7 +97,7 @@ export class TokenSessionManager<
     this.decode = config.jwt?.decode ?? decode
     this.cookies = createCookiesOptions(config.useSecureCookies)
     this.createSession = config.createSession;
-    this.refreshSession = config.refreshSession;
+    this.handleRefresh = config.handleRefresh;
     this.onInvalidateSession = config.onInvalidateSession;
   }
 
@@ -133,20 +137,31 @@ export class TokenSessionManager<
     return cookies
   }
 
+  /**
+   * Handle request.
+   */
   async handleRequest(request: InternalRequest<TUser>): Promise<InternalResponse<TUser>> {
+    const response: InternalResponse<TUser> = { }
+
     const accessToken = request.cookies[this.cookies.accessToken.name]
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
 
+    const access = await this.decode<TSession>({ secret: this.secret, token: accessToken })
     const refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
 
-    if (!accessToken && refreshToken && refresh) {
-      const newSession = await this.refreshSession(refresh)
-      return { cookies: await this.createCookies(newSession) }
+    const newSession = await this.handleRefresh({ accessToken: access, refreshToken: refresh })
+
+    if (newSession) {
+      response.cookies ??= []
+      response.cookies.push(...await this.createCookies(newSession))
     }
 
-    return {}
+    return response
   }
 
+  /**
+   * Handle response.
+   */
   async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser>> {
     if (!response.user) return response
 
@@ -158,6 +173,9 @@ export class TokenSessionManager<
     return response
   }
 
+  /**
+   * Get the user from the request.
+   */
   async getUser(request: Request): Promise<TUser | Nullish> {
     const cookies = parse(request.headers.get("cookie") ?? "")
 
@@ -168,6 +186,9 @@ export class TokenSessionManager<
     return user
   }
 
+  /**
+   * Logout the user.
+   */
   async logout(request: Request): Promise<InternalResponse<TUser>> {
     const cookies = parse(request.headers.get("cookie") ?? "")
 

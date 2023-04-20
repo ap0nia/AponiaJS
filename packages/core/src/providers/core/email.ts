@@ -1,7 +1,5 @@
 import type { InternalRequest } from "../../internal/request";
 import type { InternalResponse } from "../../internal/response";
-import type { CookiesOptions } from "../../security/cookie";
-import type { JWTOptions } from "../../security/jwt";
 
 type Awaitable<T> = PromiseLike<T> | T
 
@@ -40,15 +38,21 @@ export class EmailProvider<T> {
     }
   }
 
-  setJwtOptions(options: JWTOptions) {
-    // this.jwt = options
+  /**
+   * Credentials doesn't use JWT.
+   */
+  setJwtOptions() {
     return this
   }
 
-  setCookiesOptions(options: CookiesOptions) {
-    // this.cookies = options
+  /**
+   * Credentials doesn't use cookies.
+   */
+  setCookiesOptions() {
     return this
   }
+
+
   async login(request: InternalRequest): Promise<InternalResponse> {
     return this.onAuth(request)
   }
