@@ -1,6 +1,6 @@
 import * as oauth from 'oauth4webapi'
-import { OAuthProvider, mergeOAuthOptions } from "../core/oauth"
-import type { OAuthDefaultConfig, OAuthUserConfig } from "../core/oauth"
+import { OAuthProvider, mergeOAuthOptions } from "../core/oauth.js"
+import type { OAuthDefaultConfig, OAuthUserConfig } from "../core/oauth.js"
 
 interface Identifier {
   identifier: string

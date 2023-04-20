@@ -1,10 +1,10 @@
 import { parse } from "cookie";
-import { encode, decode } from "../security/jwt";
-import { createCookiesOptions } from "../security/cookie";
-import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from "../security/jwt";
-import type { Cookie, CookiesOptions } from "../security/cookie";
-import type { InternalRequest } from "../internal/request";
-import type { InternalResponse } from "../internal/response";
+import { encode, decode } from "../security/jwt.js";
+import { createCookiesOptions } from "../security/cookie.js";
+import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from "../security/jwt.js";
+import type { Cookie, CookiesOptions } from "../security/cookie.js";
+import type { InternalRequest } from "../internal/request.js";
+import type { InternalResponse } from "../internal/response.js";
 
 const DefaultAccessTokenMaxAge = 60 * 60
 

@@ -1,5 +1,5 @@
-import { OIDCProvider, mergeOIDCOptions } from '../core/oidc'
-import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc'
+import { OIDCProvider, mergeOIDCOptions } from '../core/oidc.js'
+import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc.js'
 
 export interface TwitchProfile extends Record<string, any> {
   sub: string

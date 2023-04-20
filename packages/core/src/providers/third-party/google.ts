@@ -1,5 +1,5 @@
-import { OIDCProvider, mergeOIDCOptions } from '../core/oidc'
-import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc'
+import { OIDCProvider, mergeOIDCOptions } from '../core/oidc.js'
+import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc.js'
 
 export interface GoogleProfile extends Record<string, any> {
   aud: string

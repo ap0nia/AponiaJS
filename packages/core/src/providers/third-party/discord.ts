@@ -1,5 +1,5 @@
-import { OAuthProvider, mergeOAuthOptions } from "../core/oauth"
-import type { OAuthDefaultConfig, OAuthUserConfig } from "../core/oauth"
+import { OAuthProvider, mergeOAuthOptions } from "../core/oauth.js"
+import type { OAuthDefaultConfig, OAuthUserConfig } from "../core/oauth.js"
 
 /**
  * Corresponds to the user structure documented here:

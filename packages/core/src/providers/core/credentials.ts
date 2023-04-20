@@ -1,5 +1,5 @@
-import type { InternalRequest } from "../../internal/request";
-import type { InternalResponse } from "../../internal/response";
+import type { InternalRequest } from "../../internal/request.js";
+import type { InternalResponse } from "../../internal/response.js";
 
 type Awaitable<T> = PromiseLike<T> | T
 

@@ -1,10 +1,10 @@
 import * as oauth from 'oauth4webapi'
-import * as checks from '../../security/checks'
-import { createCookiesOptions } from '../../security/cookie'
-import type { Cookie, CookiesOptions } from '../../security/cookie'
-import type { JWTOptions } from '../../security/jwt'
-import type { InternalRequest } from '../../internal/request'
-import type { InternalResponse } from '../../internal/response'
+import * as checks from '../../security/checks.js'
+import { createCookiesOptions } from '../../security/cookie.js'
+import type { Cookie, CookiesOptions } from '../../security/cookie.js'
+import type { JWTOptions } from '../../security/jwt.js'
+import type { InternalRequest } from '../../internal/request.js'
+import type { InternalResponse } from '../../internal/response.js'
 
 type Awaitable<T> = PromiseLike<T> | T
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "rimraf dist && tsup"
+    "build": "rimraf dist && tsc"
   },
   "files": [
     "src",
@@ -28,7 +28,6 @@
     "@types/cookie": "^0.5.1",
     "@types/node": "^18.15.11",
     "rimraf": "^5.0.0",
-    "tsup": "^6.7.0",
     "typescript": "^5.0.4"
   }
 }

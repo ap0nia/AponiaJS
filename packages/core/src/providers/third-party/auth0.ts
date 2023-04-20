@@ -1,5 +1,5 @@
-import { OIDCProvider, mergeOIDCOptions } from "../core/oidc"
-import type { OIDCDefaultConfig, OIDCUserConfig } from "../core/oidc"
+import { OIDCProvider, mergeOIDCOptions } from "../core/oidc.js"
+import type { OIDCDefaultConfig, OIDCUserConfig } from "../core/oidc.js"
 
 /** @see [User Profile Structure](https://auth0.com/docs/manage-users/user-accounts/user-profiles/user-profile-structure) */
 export interface Auth0Profile {

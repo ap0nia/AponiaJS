@@ -1,4 +1,4 @@
-import type { Cookie } from "../security/cookie"
+import type { Cookie } from "../security/cookie.js"
 
 /**
  * Internal Response.

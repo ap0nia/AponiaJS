@@ -1,11 +1,11 @@
-import { toInternalRequest } from "./request"
-import type { InternalResponse } from "./response"
-import type { TokenSessionManager } from "../session/token"
-import type { DatabaseSessionManager } from "../session/database"
-import type { CredentialsProvider } from "../providers/core/credentials"
-import type { EmailProvider } from "../providers/core/email"
-import type { OAuthProvider } from "../providers/core/oauth"
-import type { OIDCProvider } from "../providers/core/oidc"
+import { toInternalRequest } from "./request.js"
+import type { InternalResponse } from "./response.js"
+import type { TokenSessionManager } from "../session/token.js"
+import type { DatabaseSessionManager } from "../session/database.js"
+import type { CredentialsProvider } from "../providers/core/credentials.js"
+import type { EmailProvider } from "../providers/core/email.js"
+import type { OAuthProvider } from "../providers/core/oauth.js"
+import type { OIDCProvider } from "../providers/core/oidc.js"
 
 /**
  * Static auth pages.
