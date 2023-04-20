@@ -3,7 +3,7 @@ import type { JWTPayload } from "jose";
 import { hkdf } from "@panva/hkdf";
 import type { Awaitable } from "@auth/core/types";
 
-const DEFAULT_MAX_AGE = 30 * 24 * 60 * 60;
+const DefaultMaxAge = 30 * 24 * 60 * 60;
 
 const now = () => (Date.now() / 1000) | 0;
 
@@ -48,7 +48,7 @@ export interface JWTEncodeParams<T = {}> {
  * Issues a JWT, encrypted using "A256GCM" by default.
  */
 export async function encode<T extends Record<string, any> = {}>(params: JWTEncodeParams<T>) {
-  const { token = {}, secret, maxAge = DEFAULT_MAX_AGE } = params;
+  const { token = {}, secret, maxAge = DefaultMaxAge } = params;
 
   const encryptionSecret = await getDerivedEncryptionKey(secret);
 

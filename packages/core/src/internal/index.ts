@@ -10,7 +10,7 @@ import type { OIDCProvider } from "../providers/core/oidc"
 /**
  * Static auth pages.
  */
-interface Pages {
+type Pages = {
   signOut: string
   session: string
 }
@@ -133,4 +133,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   }
 }
 
-export default Auth
+export function Aponia<
+  TUser, TSession, TRefresh = undefined
+>(config: AuthConfig<TUser, TSession, TRefresh>) {
+  return new Auth(config)
+}

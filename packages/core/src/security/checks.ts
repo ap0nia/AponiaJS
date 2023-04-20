@@ -1,10 +1,10 @@
 import * as oauth from 'oauth4webapi'
 import { encode, decode } from "./jwt"
-import type { JWTOptions } from "./jwt"
 import type { Cookie } from "./cookie"
-import type { OAuthProvider } from "../providers/core/oauth"
+import type { JWTOptions } from "./jwt"
 import type { InternalRequest } from '../internal/request'
-import { OIDCProvider } from '../providers/core/oidc'
+import type { OAuthProvider } from "../providers/core/oauth"
+import type { OIDCProvider } from '../providers/core/oidc'
 
 type CheckPayload = { value: string }
 
