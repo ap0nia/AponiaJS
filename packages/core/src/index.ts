@@ -1,5 +1,7 @@
 export * from './internal'
 
+export * from './session/token'
+
 export * from './providers/core'
 export * from './providers/core/credentials'
 export * from './providers/core/email'

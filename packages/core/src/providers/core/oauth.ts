@@ -184,8 +184,14 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
    * Login the user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
-    const cookies: Cookie[] = []
     const url = new URL(this.endpoints.authorization.url)
+    const cookies: Cookie[] = []
+
+    Object.entries(this.endpoints?.authorization?.params ?? {}).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        url.searchParams.set(key, value)
+      }
+    })
 
     if (this.checks?.includes('state')) {
       const [state, stateCookie] = await checks.state.create(this)
@@ -273,7 +279,11 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
 
     if (!profile) throw new Error("TODO: Handle missing profile")
 
-    return await this.onAuth(profile)
+    const processedResponse = await this.onAuth(profile)
+    processedResponse.cookies ??= []
+    processedResponse.cookies.push(...cookies)
+
+    return processedResponse
   }
 }
 
@@ -321,7 +331,7 @@ export function mergeOAuthOptions(
       client_secret: userOptions.clientSecret,
     },
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
-    checks: userOptions.checks ?? defaultOptions.checks ?? ['nonce'],
+    checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
     pages: {
       login: userOptions.pages?.login ?? `/auth/login/${id}`,
       callback: userOptions.pages?.callback ?? `/auth/callback/${id}`,
@@ -331,6 +341,11 @@ export function mergeOAuthOptions(
         ...defaultOptions.endpoints.authorization,
         ...authorizationOptions,
         url: authorizationUrl,
+        params: {
+          ...defaultOptions.endpoints?.authorization?.params,
+          client_id: userOptions.clientId,
+          response_type: 'code',
+        },
       },
       token: {
         ...defaultOptions.endpoints.token,

@@ -118,10 +118,12 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     if (refreshResponse.cookies?.length) {
       response.cookies ??= []
-      response.cookies.concat(refreshResponse.cookies)
+      response.cookies.push(...refreshResponse.cookies)
     }
 
-    return response
+    console.log({ response })
+
+    return await this.session.handleResponse(response)
   }
 }
 

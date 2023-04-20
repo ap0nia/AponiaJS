@@ -16,12 +16,11 @@ interface Refresh {}
 const auth = new Auth<User, Session, Refresh>({
   session: new TokenSessionManager({
     secret: 'secret',
-    createSession(user) {
-      console.log({ user })
-      return { session: { id: 123, name: '' }, refresh: {} }
+    createSession(session) {
+      return { session, refresh: {} }
     },
     refreshSession(refresh) {
-      console.log({ refresh: '' })
+      // console.log({ refresh: '' })
     },
   }),
   providers: [
@@ -29,16 +28,14 @@ const auth = new Auth<User, Session, Refresh>({
       clientId: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
       onAuth(user) {
-        console.log(user)
-        return {}
+        return { user: { id: 100, name: user.url }}
       },
     }),
     Google({ 
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
       onAuth(user) {
-        console.log(user)
-        return {}
+        return { user: { id: 69, name: user.name }}
       },
     }),
   ],

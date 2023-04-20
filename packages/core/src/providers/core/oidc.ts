@@ -99,6 +99,7 @@ interface OIDCUserEndpoints<TProfile, TUser = TProfile> {
  */
 export interface OIDCConfig<TProfile, TUser = TProfile> extends Provider<TProfile, TUser> {
   id: string
+  issuer: string
   clientId: string
   clientSecret: string
   client: oauth.Client
@@ -131,6 +132,8 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
   type = "oidc" as const
 
+  issuer: string
+
   clientId: string
 
   clientSecret: string
@@ -153,6 +156,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
   constructor(options: OIDCConfig<TProfile, TUser>) {
     this.id = options.id
+    this.issuer = options.issuer
     this.clientId = options.clientId
     this.clientSecret = options.clientSecret
     this.client = options.client
@@ -164,7 +168,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
     this.onAuth = options.onAuth
 
     // OAuth doesn't use discovery for authorization server, only OIDC.
-    this.authorizationServer = { issuer: 'auth.js' }
+    this.authorizationServer = { issuer: options.issuer }
     this.initialized = false
   }
 
@@ -197,13 +201,18 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
   async login(request: InternalRequest): Promise<InternalResponse> {
     if (!this.initialized) await this.initialize()
 
-    const cookies: Cookie[] = []
-
     if (!this.authorizationServer.authorization_endpoint) {
       throw new TypeError(`Invalid authorization endpoint. ${this.authorizationServer.authorization_endpoint}`)
     }
 
     const url = new URL(this.authorizationServer.authorization_endpoint)
+    const cookies: Cookie[] = []
+
+    Object.entries(this.endpoints?.authorization?.params ?? {}).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        url.searchParams.set(key, value)
+      }
+    })
 
     if (this.checks?.includes('state')) {
       const [state, stateCookie] = await checks.state.create(this)
@@ -226,6 +235,10 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
     if (!url.searchParams.has('redirect_uri')) {
       url.searchParams.set('redirect_uri', `${request.url.origin}${this.pages.callback}`)
+    }
+
+    if (!url.searchParams.has('scope')) {
+      url.searchParams.set("scope", "openid profile email")
     }
 
     return { status: 302, redirect: url.toString(), cookies }
@@ -290,7 +303,11 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
     const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
-    return await this.onAuth(profile)
+    const processedResponse = await this.onAuth(profile)
+    processedResponse.cookies ??= []
+    processedResponse.cookies.push(...cookies)
+
+    return processedResponse
   }
 }
 
@@ -318,6 +335,7 @@ export function mergeOIDCOptions(
 
   return {
     ...userOptions,
+    ...defaultOptions,
     id,
     client: {
       ...defaultOptions.client,
@@ -326,7 +344,7 @@ export function mergeOIDCOptions(
       client_secret: userOptions.clientSecret,
     },
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
-    checks: userOptions.checks ?? defaultOptions.checks ?? ['nonce'],
+    checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
     pages: {
       login: userOptions.pages?.login ?? `/auth/login/${id}`,
       callback: userOptions.pages?.callback ?? `/auth/callback/${id}`,
@@ -335,6 +353,12 @@ export function mergeOIDCOptions(
       authorization: {
         ...defaultOptions.endpoints?.authorization,
         ...authorizationOptions,
+        params: {
+          ...defaultOptions.endpoints?.authorization?.params,
+          ...authorizationOptions.params,
+          client_id: userOptions.clientId,
+          response_type: 'code',
+        },
       },
       token: {
         ...defaultOptions.endpoints?.token,

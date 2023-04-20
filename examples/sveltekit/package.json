@@ -6,7 +6,6 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@auth/core": "^0.5.1",
     "aponia": "*"
   },
   "devDependencies": {
