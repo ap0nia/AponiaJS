@@ -1,18 +1,38 @@
 import type { InternalRequest } from "../../internal/request.js";
 import type { InternalResponse } from "../../internal/response.js";
 
+type Nullish = null | undefined | void
+
 type Awaitable<T> = PromiseLike<T> | T
 
 interface Pages {
+  /**
+   * Route for initial email login.
+   */
   login: string
+
+  /**
+   * Callback route for email login verification.
+   */
   callback: string
 }
 
-export interface EmailConfig<TUser>  {
+export interface EmailConfig<T> {
   /**
-   * Handle the user logging in.
+   * Extract the email from the initial request.
    */
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<TUser>>
+  getEmail: (request: InternalRequest) => Awaitable<string | Nullish>
+
+  /**
+   * After getting the email, boilerplate is generated for the email.
+   * Handle the user logging in, i.e. sending a verification email.
+   */
+  onAuth: (request: InternalRequest) => Awaitable<InternalResponse<T>>
+
+  /**
+   * Handle verifying the user, i.e. after the user clicks the verification link in the email.
+   */
+  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
 
   /**
    * Pages.
@@ -24,14 +44,22 @@ export interface EmailConfig<TUser>  {
  * Email provider (first-party only).
  */
 export class EmailProvider<T> {
-  id = 'credentials' as const
+  id = 'email' as const
 
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
+  onAuth: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
+
+  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
 
   pages: Pages
 
+  theme: any
+
+  getEmail: (request: InternalRequest) => Awaitable<string | Nullish>
+
   constructor(config: EmailConfig<T>) {
+    this.getEmail = config.getEmail
     this.onAuth = config.onAuth
+    this.onVerify = config.onVerify
     this.pages = {
       login: config.pages?.login ?? `/auth/login/${this.id}`,
       callback: config.pages?.callback ?? `/auth/callback/${this.id}`,
@@ -52,16 +80,87 @@ export class EmailProvider<T> {
     return this
   }
 
-
   async login(request: InternalRequest): Promise<InternalResponse> {
-    return this.onAuth(request)
+    const email = await this.getEmail(request)
+
+    // TODO: error
+    if (!email) {
+      return {}
+    }
+
+    const token = randomString()
+
+    const escapedHost = request.url.host.replace(/\./g, "&#8203;.")
+
+    const url = new URL(`${request.url.origin}/${this.pages.callback}`)
+
+    url.searchParams.set("token", token)
+    url.searchParams.set("email", email)
+
+    const brandColor = this.theme.brandColor ?? "#346df1"
+    const buttonText = this.theme.buttonText ?? "#fff"
+
+    const color = {
+      background: "#f9f9f9",
+      text: "#444",
+      mainBackground: "#fff",
+      buttonBackground: brandColor,
+      buttonBorder: brandColor,
+      buttonText,
+    }
+
+    const html = `
+    <body style="background: ${color.background};">
+      <table width="100%" border="0" cellspacing="20" cellpadding="0" style="background: ${color.mainBackground}; max-width: 600px; margin: auto; border-radius: 10px;">
+        <tr>
+          <td align="center"
+            style="padding: 10px 0px; font-size: 22px; font-family: Helvetica, Arial, sans-serif; color: ${color.text};">
+            Sign in to <strong>${escapedHost}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 20px 0;">
+            <table border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td align="center" style="border-radius: 5px;" bgcolor="${color.buttonBackground}">
+                  <a href="${url}" target="_blank" style="font-size: 18px; font-family: Helvetica, Arial, sans-serif; color: ${color.buttonText}; text-decoration: none; border-radius: 5px; padding: 10px 20px; border: 1px solid ${color.buttonBorder}; display: inline-block; font-weight: bold;">
+                    Sign in
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center"
+            style="padding: 0px 0px 10px 0px; font-size: 16px; line-height: 22px; font-family: Helvetica, Arial, sans-serif; color: ${color.text};">
+            If you did not request this email you can safely ignore it.
+          </td>
+        </tr>
+      </table>
+    </body>
+    `
+
+    return this.onAuth(request, { html, email, token, provider: this })
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    return this.login(request)
+    const token = request.url.searchParams.get('token')
+    const email = request.url.searchParams.get('email')
+    return this.onVerify(request, { token, email })
   }
 }
 
 export function Email<T>(config: EmailConfig<T>) {
   return new EmailProvider<T>(config)
+}
+
+/** 
+ * Web compatible method to create a random string of a given length
+ */
+export function randomString(size: number = 32) {
+  const i2hex = (i: number) => ("0" + i.toString(16)).slice(-2)
+  const r = (a: string, i: number): string => a + i2hex(i)
+  const bytes = crypto.getRandomValues(new Uint8Array(size))
+  return Array.from(bytes).reduce(r, "")
 }

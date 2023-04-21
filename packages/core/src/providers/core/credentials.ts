@@ -52,12 +52,18 @@ export class CredentialsProvider<T> {
     return this
   }
 
+  /**
+   * Login user.
+   */
   async login(request: InternalRequest): Promise<InternalResponse> {
     return this.onAuth(request)
   }
 
+  /**
+   * Login user.
+   */
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    return this.login(request)
+    return this.onAuth(request)
   }
 }
 
