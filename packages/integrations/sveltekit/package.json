@@ -18,6 +18,9 @@
       "default": "./dist/index.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
     "@sveltejs/kit": "^1.15.5",
     "svelte": "^3.58.0",
