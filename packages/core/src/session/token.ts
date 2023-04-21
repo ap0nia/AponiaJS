@@ -142,17 +142,39 @@ export class TokenSessionManager<
    */
   async handleRequest(request: InternalRequest<TUser>): Promise<InternalResponse<TUser>> {
     const response: InternalResponse<TUser> = { }
+    response.cookies ??= []
 
     const accessToken = request.cookies[this.cookies.accessToken.name]
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
 
-    const access = await this.decode<TSession>({ secret: this.secret, token: accessToken })
-    const refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
+    let access: TSession | null = null
+    let refresh: TRefresh | null = null
+
+    try { 
+      access = await this.decode<TSession>({ secret: this.secret, token: accessToken })
+    } catch (e) {
+      console.log('Error decoding access token', e)
+      response.cookies.push({ 
+        name: this.cookies.accessToken.name,
+        value: '',
+        options: { ...this.cookies.accessToken.options, maxAge: 0 },
+      })
+    }
+
+    try {
+      refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
+    } catch (e) {
+      console.log('Error decoding refresh token', e)
+      response.cookies.push({ 
+        name: this.cookies.refreshToken.name,
+        value: '',
+        options: { ...this.cookies.refreshToken.options, maxAge: 0 },
+      })
+    }
 
     const newSession = await this.handleRefresh({ accessToken: access, refreshToken: refresh })
 
     if (newSession) {
-      response.cookies ??= []
       response.cookies.push(...await this.createCookies(newSession))
     }
 
@@ -182,7 +204,14 @@ export class TokenSessionManager<
     const accessToken = cookies[this.cookies.accessToken.name]
     if (!accessToken) return null
 
-    const user = await this.decode<TUser>({ secret: this.secret, token: accessToken })
+    let user: TUser | null = null 
+
+    try {
+      user = await this.decode<TUser>({ secret: this.secret, token: accessToken })
+    } catch (e) {
+      console.log('Error decoding access token', e)
+    }
+
     return user
   }
 
@@ -195,8 +224,20 @@ export class TokenSessionManager<
     const accessToken = cookies[this.cookies.accessToken.name]
     const refreshToken = cookies[this.cookies.refreshToken.name]
 
-    const session = await this.decode<TSession>({ secret: this.secret, token: accessToken })
-    const refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
+    let session: TSession | null = null
+    let refresh: TRefresh | null = null
+
+    try { 
+      session = await this.decode<TSession>({ secret: this.secret, token: accessToken })
+    } catch (e) {
+      console.log('Error decoding access token', e)
+    }
+
+    try {
+      refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
+    } catch (e) {
+      console.log('Error decoding refresh token', e)
+    }
 
     const response = session
       ? (await this.onInvalidateSession?.(session, refresh)) ?? {}

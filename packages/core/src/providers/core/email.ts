@@ -9,12 +9,18 @@ interface Pages {
   /**
    * Route for initial email login.
    */
-  login: string
+  login: {
+    route: string
+    methods: string[]
+  }
 
   /**
    * Callback route for email login verification.
    */
-  callback: string
+  callback: {
+    route: string
+    methods: string[]
+  }
 }
 
 export interface EmailConfig<T> {
@@ -61,8 +67,14 @@ export class EmailProvider<T> {
     this.onAuth = config.onAuth
     this.onVerify = config.onVerify
     this.pages = {
-      login: config.pages?.login ?? `/auth/login/${this.id}`,
-      callback: config.pages?.callback ?? `/auth/callback/${this.id}`,
+      login: {
+        route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
+        methods: config.pages?.login?.methods ?? ['POST'],
+      },
+      callback: {
+        route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
+        methods: config.pages?.callback?.methods ?? ['GET'],
+      }
     }
   }
 

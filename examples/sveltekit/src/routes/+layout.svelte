@@ -5,7 +5,7 @@
   <a href="/auth/login/github">GitHub login</a>
 </div>
 <div>
-  <a href="/auth/login/credentials">Credentials Login</a>
+  <a href="/auth/login">Credentials Login</a>
 </div>
 <div>
   <a href="/auth/session">Get Session</a>

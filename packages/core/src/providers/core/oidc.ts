@@ -13,8 +13,14 @@ type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
 type Tokens = Partial<oauth.OAuth2TokenEndpointResponse>
 
 interface Pages {
-  login: string
-  callback: string
+  login: {
+    route: string
+    methods: string[]
+  }
+  callback: {
+    route: string
+    methods: string[]
+  }
 }
 
 interface Endpoint<TContext = any, TResponse = any> {
@@ -239,7 +245,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
     }
 
     if (!url.searchParams.has('redirect_uri')) {
-      url.searchParams.set('redirect_uri', `${request.url.origin}${this.pages.callback}`)
+      url.searchParams.set('redirect_uri', `${request.url.origin}${this.pages.callback.route}`)
     }
 
     if (!url.searchParams.has('scope')) {
@@ -278,7 +284,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
       this.authorizationServer,
       this.client,
       codeGrantParams,
-      `${request.url.origin}${this.pages.callback}`,
+      `${request.url.origin}${this.pages.callback.route}`,
       pkce,
     )
 
@@ -351,8 +357,14 @@ export function mergeOIDCOptions(
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
     checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
     pages: {
-      login: userOptions.pages?.login ?? `/auth/login/${id}`,
-      callback: userOptions.pages?.callback ?? `/auth/callback/${id}`,
+      login: {
+        route: userOptions.pages?.login?.route ?? `/auth/login/${id}`,
+        methods: userOptions.pages?.login?.methods ?? ['GET'],
+      },
+      callback: {
+        route: userOptions.pages?.callback?.route ?? `/auth/callback/${id}`,
+        methods: userOptions.pages?.callback?.methods ?? ['GET'],
+      }
     },
     endpoints: {
       authorization: {

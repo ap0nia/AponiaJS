@@ -114,8 +114,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     this.providers.forEach(provider => {
       provider.setJwtOptions(this.session.jwt).setCookiesOptions(this.session.cookies)
-      this.routes.login.set(provider.pages.login, provider)
-      this.routes.callback.set(provider.pages.callback, provider)
+      this.routes.login.set(provider.pages.login.route, provider)
+      this.routes.callback.set(provider.pages.callback.route, provider)
     })
   }
 
@@ -149,18 +149,20 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
 
       const signinHandler = this.routes.login.get(pathname)
-      if (signinHandler) {
+
+      if (signinHandler && signinHandler.pages.login.methods.includes(request.method)) {
         internalResponse = await signinHandler.login(internalRequest)
-        if (!internalResponse.redirect) {
+        if (internalResponse.user && !internalResponse.redirect) {
           internalResponse.redirect = this.pages.loginRedirect
           internalResponse.status = 302
         }
       }
 
       const callbackHandler = this.routes.callback.get(pathname)
-      if (callbackHandler) {
+
+      if (callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)) {
         internalResponse = await callbackHandler.callback(internalRequest)
-        if (!internalResponse.redirect) {
+        if (internalResponse.user && !internalResponse.redirect) {
           internalResponse.redirect = this.pages.loginRedirect
           internalResponse.status = 302
         }

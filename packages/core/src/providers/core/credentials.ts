@@ -1,18 +1,26 @@
 import type { InternalRequest } from "../../internal/request.js";
 import type { InternalResponse } from "../../internal/response.js";
 
+type Nullish = void | null | undefined
+
 type Awaitable<T> = PromiseLike<T> | T
 
 interface Pages {
-  login: string
-  callback: string
+  login: {
+    route: string
+    methods: string[]
+  }
+  callback: {
+    route: string
+    methods: string[]
+  }
 }
 
 export interface CredentialsConfig<T>  {
   /**
    * Handle the user logging in.
    */
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
+  onAuth: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
 
   /**
    * Pages.
@@ -28,13 +36,19 @@ export class CredentialsProvider<T> {
 
   pages: Pages
 
-  onAuth: (user: InternalRequest) => Awaitable<InternalResponse<T>>
+  onAuth: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
 
   constructor(config: CredentialsConfig<T>) {
     this.onAuth = config.onAuth
     this.pages = {
-      login: config.pages?.login ?? `/auth/login/${this.id}`,
-      callback: config.pages?.callback ?? `/auth/callback/${this.id}`,
+      login: {
+        route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
+        methods: config.pages?.login?.methods ?? ['POST'],
+      },
+      callback: {
+        route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
+        methods: config.pages?.callback?.methods ?? ['GET'],
+      }
     }
   }
 
@@ -56,14 +70,14 @@ export class CredentialsProvider<T> {
    * Login user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
-    return this.onAuth(request)
+    return (await this.onAuth(request)) ?? {}
   }
 
   /**
    * Login user.
    */
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    return this.onAuth(request)
+    return (await this.onAuth(request)) ?? {}
   }
 }
 

@@ -1,13 +1,15 @@
+import type { Auth } from 'aponia'
 import { json, redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
-import type { Auth } from 'aponia'
 
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status < 400
 
-export function createHandle<TUser, TSession, TRefresh>(auth: Auth<TUser, TSession, TRefresh>) {
+export function createAuthHandle<TUser, TSession, TRefresh>(auth: Auth<TUser, TSession, TRefresh>) {
   const handle: Handle = async ({ event, resolve }) => {
     const internalResponse = await auth.handle(event.request)
+
+    console.log({ internalResponse })
 
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
@@ -29,4 +31,4 @@ export function createHandle<TUser, TSession, TRefresh>(auth: Auth<TUser, TSessi
   return handle
 }
 
-export default createHandle
+export default createAuthHandle

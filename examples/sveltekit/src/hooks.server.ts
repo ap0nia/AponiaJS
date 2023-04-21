@@ -1,19 +1,17 @@
-import { Aponia, GitHub, Google, TokenSession } from 'aponia'
-import createHandle from '@aponia/integrations-sveltekit'
+import { eq } from 'drizzle-orm'
+import { Aponia, TokenSession, Credentials, GitHub, Google } from 'aponia'
+import createAuthHandle from '@aponia/integrations-sveltekit'
 import { sequence } from '@sveltejs/kit/hooks'
 import type { Handle } from '@sveltejs/kit'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
-import db from './lib/server/db'
+import db from '$lib/server/db'
 import { employees } from '$drizzle/schema'
-import { eq } from 'drizzle-orm'
 
-interface User {
-  id: number
-}
+type User = { id: number }
 
-interface Session extends User {}
+type Session = User
 
-interface Refresh extends User {}
+type Refresh = User
 
 const auth = Aponia<User, Session, Refresh>({
   session: TokenSession({
@@ -30,12 +28,19 @@ const auth = Aponia<User, Session, Refresh>({
     },
   }),
   providers: [
+    Credentials({
+      onAuth: async ({ request }) => {
+        const formData = await request.formData()
+        const body = Object.fromEntries(formData.entries())
+        return { body }
+      },
+    }),
     GitHub({ 
       clientId: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
       onAuth: async (user) => {
         const foundUser = db.select().from(employees).where(eq(employees.id, 1)).get()
-        return { user: foundUser }
+        return { user, foundUser }
       },
     }),
     Google({ 
@@ -46,13 +51,13 @@ const auth = Aponia<User, Session, Refresh>({
         user.name
         user.family_name
         // ...
-        return { user: { id: 69, name: user.name }}
+        return { user: {...user, id: 69 } }
       },
     }),
   ],
 })
 
-export const authHandle = createHandle(auth)
+export const authHandle = createAuthHandle(auth)
 
 export const customHandle: Handle = async ({ event, resolve }) => {
   // const allEmployees = db.select().from(employees).all()
