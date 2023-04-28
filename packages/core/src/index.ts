@@ -1,4 +1,6 @@
 export * from './internal/index.js'
+export * from './internal/request.js'
+export * from './internal/response.js'
 
 export * from './session/token.js'
 export * from './session/database.js'
