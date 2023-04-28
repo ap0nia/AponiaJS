@@ -125,8 +125,12 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    */
   async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
+
     const { pathname } = internalRequest.url
-    let internalResponse: InternalResponse = {}
+
+    let internalResponse: InternalResponse = {
+      user: this.session.getUser(internalRequest.request),
+    }
 
     try {
       const refreshResponse = await this.session.handleRequest(internalRequest)
