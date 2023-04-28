@@ -6,6 +6,8 @@ import type { JWTOptions } from '../../security/jwt.js'
 import type { InternalRequest } from '../../internal/request.js'
 import type { InternalResponse } from '../../internal/response.js'
 
+type Nullish = null | undefined | void
+
 type Awaitable<T> = PromiseLike<T> | T
 
 type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
@@ -65,7 +67,7 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile> {
   /**
    * A function that is called when the user is authenticated.
    */
-  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser>>
+  onAuth?: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
 
   /**
    * Checks to perform.
@@ -118,7 +120,7 @@ export interface OIDCConfig<TProfile, TUser = TProfile> {
   checks: OIDCCheck[]
   pages: Pages
   endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
 /**
@@ -163,7 +165,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
   endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
 
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser>>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
 
   constructor(options: OIDCConfig<TProfile, TUser>) {
     this.id = options.id
@@ -314,7 +316,7 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
     const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
-    const processedResponse = await this.onAuth(profile)
+    const processedResponse = (await this.onAuth(profile)) || {}
     processedResponse.cookies ??= []
     processedResponse.cookies.push(...cookies)
 

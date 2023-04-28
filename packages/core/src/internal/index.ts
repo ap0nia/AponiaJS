@@ -51,7 +51,7 @@ type AnySessionManager<TUser, TSession, TRefresh> =
 /**
  * Configuration.
  */
-export interface AuthConfig<TUser, TSession, TRefresh = undefined> {
+export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Providers.
    */
@@ -181,7 +181,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 }
 
 export function Aponia<
-  TUser, TSession, TRefresh = undefined
+  TUser, TSession = TUser, TRefresh = undefined
 >(config: AuthConfig<TUser, TSession, TRefresh>) {
   return new Auth(config)
 }
