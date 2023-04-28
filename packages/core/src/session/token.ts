@@ -186,7 +186,7 @@ export class TokenSessionManager<
   /**
    * Handle response.
    */
-  async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser>> {
+  async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser | TSession>> {
     if (!response.user) return response
 
     const newSession = await this.createSession(response.user)

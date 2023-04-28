@@ -176,8 +176,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
 
       const finalResponse = await this.session.handleResponse(internalResponse)
-      finalResponse.user ||= refreshResponse.user as any
-      finalResponse.user ||= (await this.session.getUser(internalRequest.request)) || undefined
+      finalResponse.user ||= refreshResponse.user
+      finalResponse.user ||= await this.session.getUser(internalRequest.request)
       return finalResponse
     } catch (error) {
       return { error }

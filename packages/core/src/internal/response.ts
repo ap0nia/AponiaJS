@@ -8,7 +8,7 @@ export interface InternalResponse<TUser = any> {
   /**
    * User created during login or refresh.
    */
-  user?: TUser
+  user?: TUser | null | undefined | void
 
   /**
    * Response status.
