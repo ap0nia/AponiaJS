@@ -169,10 +169,10 @@ export class DatabaseSessionManager<
         })
       }
 
-      return { cookies, user: newSession?.accessToken }
+      return { cookies, user: newSession?.accessToken ?? await this.getUser(request.request) }
     }
 
-    return {}
+    return { user: await this.getUser(request.request) }
   }
 
   async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser>> {

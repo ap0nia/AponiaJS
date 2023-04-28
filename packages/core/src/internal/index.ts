@@ -124,19 +124,21 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    * Specific implementations should convert the internal response accordingly.
    */
   async handle(request: Request): Promise<InternalResponse> {
+    /**
+     * 1. Convert request to internal request.
+     */
     const internalRequest = await toInternalRequest(request)
 
-    const { pathname } = internalRequest.url
-
-    let internalResponse: InternalResponse = {}
-
     try {
-      const refreshResponse = await this.session.handleRequest(internalRequest)
+      /**
+       * 2. Generate an initial response with the session info.
+       * - Any discovered `user` will be forwarded to the final response.
+       */
+      const sessionResponse = await this.session.handleRequest(internalRequest)
 
-      switch (pathname) {
+      switch (internalRequest.url.pathname) {
         case this.pages.session: {
-          const response = { body: await this.session.getUser(internalRequest.request) }
-          return response
+          return sessionResponse
         }
 
         case this.pages.logout: {
@@ -149,36 +151,48 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
         }
       }
 
+      /**
+       * 3. Generate a response from the provider.
+       * - If a `user` is generated from a provider, then the session manager should create a new session.
+       */
+      let providerResponse: InternalResponse = {}
 
-      const signinHandler = this.routes.login.get(pathname)
+      const signinHandler = this.routes.login.get(internalRequest.url.pathname)
 
       if (signinHandler && signinHandler.pages.login.methods.includes(request.method)) {
-        internalResponse = await signinHandler.login(internalRequest)
-        if (internalResponse.user && !internalResponse.redirect) {
-          internalResponse.redirect = this.pages.loginRedirect
-          internalResponse.status = 302
+        providerResponse = await signinHandler.login(internalRequest)
+        if (providerResponse.user && !providerResponse.redirect) {
+          providerResponse.redirect = this.pages.loginRedirect
+          providerResponse.status = 302
         }
       }
 
-      const callbackHandler = this.routes.callback.get(pathname)
+      const callbackHandler = this.routes.callback.get(internalRequest.url.pathname)
 
       if (callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)) {
-        internalResponse = await callbackHandler.callback(internalRequest)
-        if (internalResponse.user && !internalResponse.redirect) {
-          internalResponse.redirect = this.pages.loginRedirect
-          internalResponse.status = 302
+        providerResponse = await callbackHandler.callback(internalRequest)
+        if (providerResponse.user && !providerResponse.redirect) {
+          providerResponse.redirect = this.pages.loginRedirect
+          providerResponse.status = 302
         }
       }
 
-      if (refreshResponse.cookies?.length) {
-        internalResponse.cookies ??= []
-        internalResponse.cookies.push(...refreshResponse.cookies)
+      if (sessionResponse.cookies?.length) {
+        providerResponse.cookies ??= []
+        providerResponse.cookies.push(...sessionResponse.cookies)
       }
 
-      const finalResponse = await this.session.handleResponse(internalResponse)
-      finalResponse.user ||= refreshResponse.user
-      finalResponse.user ||= await this.session.getUser(internalRequest.request)
-      return finalResponse
+      /**
+       * 4.The session handler handles the provider response.
+       */
+      const internalResponse = await this.session.handleResponse(providerResponse)
+
+      /**
+       * The final `user` is either from the initial session response or the handled provider response.
+       */
+      internalResponse.user ||= sessionResponse.user
+
+      return internalResponse
     } catch (error) {
       return { error }
     }
