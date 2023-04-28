@@ -134,7 +134,7 @@ export class DatabaseSessionManager<
   }
 
 
-  async handleRequest(request: InternalRequest<TUser>): Promise<InternalResponse<TUser>> {
+  async handleRequest(request: InternalRequest<TUser>): Promise<InternalResponse<TUser | TSession>> {
     const accessToken = request.cookies[this.cookies.accessToken.name]
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
 
@@ -169,7 +169,7 @@ export class DatabaseSessionManager<
         })
       }
 
-      return { cookies }
+      return { cookies, user: newSession?.accessToken }
     }
 
     return {}

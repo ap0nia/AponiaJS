@@ -177,6 +177,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
         internalResponse.cookies.push(...refreshResponse.cookies)
       }
 
+      internalResponse.user = refreshResponse.user
+
       return await this.session.handleResponse(internalResponse)
     } catch (error) {
       return { error }
