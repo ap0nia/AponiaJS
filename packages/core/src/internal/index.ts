@@ -128,9 +128,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     const { pathname } = internalRequest.url
 
-    let internalResponse: InternalResponse = {
-      user: await this.session.getUser(internalRequest.request),
-    }
+    let internalResponse: InternalResponse = {}
 
     try {
       const refreshResponse = await this.session.handleRequest(internalRequest)
@@ -177,9 +175,10 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
         internalResponse.cookies.push(...refreshResponse.cookies)
       }
 
-      internalResponse.user ||= refreshResponse.user
-
-      return await this.session.handleResponse(internalResponse)
+      const finalResponse = await this.session.handleResponse(internalResponse)
+      finalResponse.user ||= refreshResponse.user as any
+      finalResponse.user ||= (await this.session.getUser(internalRequest.request)) || undefined
+      return finalResponse
     } catch (error) {
       return { error }
     }
