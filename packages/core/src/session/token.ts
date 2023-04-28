@@ -140,8 +140,8 @@ export class TokenSessionManager<
   /**
    * Handle request.
    */
-  async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
-    const response: InternalResponse<TUser> = { }
+  async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser | TSession>> {
+    const response: InternalResponse<TUser | TSession> = {}
     response.cookies ??= []
 
     const accessToken = request.cookies[this.cookies.accessToken.name]
@@ -177,6 +177,8 @@ export class TokenSessionManager<
     if (newSession) {
       response.cookies.push(...await this.createCookies(newSession))
     }
+    
+    response.user = newSession?.accessToken
 
     return response
   }
