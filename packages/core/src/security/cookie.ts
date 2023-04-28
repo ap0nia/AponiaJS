@@ -27,11 +27,19 @@ export interface CookiesOptions {
   refreshToken: CookieOption
 }
 
-export function createCookiesOptions(useSecureCookies: boolean = false): CookiesOptions {
-  const cookiePrefix = useSecureCookies ? "__Secure-" : ""
+export const defaultCookieName = 'aponia-auth'
+
+export const defaultSecurePrefix = '__Secure-'
+
+export function createCookiesOptions(
+  useSecureCookies = false,
+  cookieName = defaultCookieName,
+  securePrefix = defaultSecurePrefix
+): CookiesOptions {
+  const cookiePrefix = useSecureCookies ? securePrefix : ""
   return {
     sessionToken: {
-      name: `${cookiePrefix}next-auth.session-token`,
+      name: `${cookiePrefix}${cookieName}.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -40,7 +48,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     accessToken: {
-      name: `${cookiePrefix}next-auth.access-token`,
+      name: `${cookiePrefix}${cookieName}.access-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -49,7 +57,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     refreshToken: {
-      name: `${cookiePrefix}next-auth.refresh-token`,
+      name: `${cookiePrefix}${cookieName}.refresh-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -58,7 +66,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     callbackUrl: {
-      name: `${cookiePrefix}next-auth.callback-url`,
+      name: `${cookiePrefix}${cookieName}.callback-url`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -78,7 +86,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     pkceCodeVerifier: {
-      name: `${cookiePrefix}next-auth.pkce.code_verifier`,
+      name: `${cookiePrefix}${cookieName}.pkce.code_verifier`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -88,7 +96,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     state: {
-      name: `${cookiePrefix}next-auth.state`,
+      name: `${cookiePrefix}${cookieName}.state`,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -98,7 +106,7 @@ export function createCookiesOptions(useSecureCookies: boolean = false): Cookies
       },
     },
     nonce: {
-      name: `${cookiePrefix}next-auth.nonce`,
+      name: `${cookiePrefix}${cookieName}.nonce`,
       options: {
         httpOnly: true,
         sameSite: "lax",
