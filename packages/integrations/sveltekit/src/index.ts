@@ -9,8 +9,6 @@ export function createAuthHandle<TUser, TSession, TRefresh>(auth: Auth<TUser, TS
   const handle: Handle = async ({ event, resolve }) => {
     const internalResponse = await auth.handle(event.request)
 
-    console.log({ internalResponse })
-
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
         event.cookies.set(cookie.name, cookie.value, cookie.options)
