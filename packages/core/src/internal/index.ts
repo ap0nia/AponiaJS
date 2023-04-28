@@ -129,7 +129,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     const { pathname } = internalRequest.url
 
     let internalResponse: InternalResponse = {
-      user: this.session.getUser(internalRequest.request),
+      user: await this.session.getUser(internalRequest.request),
     }
 
     try {
