@@ -181,6 +181,10 @@ export class SessionManager<
       console.log('Error decoding refresh token', e)
     }
 
+    /**
+     * The user-defined function decides when to create new tokens.
+     * e.g. When the access token is expired, but the refresh token is not.
+     */
     const sessionTokens = await this.handleRefresh({ accessToken: access, refreshToken: refresh })
 
     if (sessionTokens) {

@@ -135,7 +135,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     try {
       /**
        * 2. Generate an initial `InternalResponse` with the session info.
-       * If the `user` property is defined, the user is already logged in.
+       * The `user` property will be defined if they're already logged in.
+       * `cookies` may be defined if a new session was created.
        */
       const sessionResponse = await this.session.handleRequest(internalRequest)
 
@@ -182,11 +183,6 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
         }
       }
 
-      if (sessionResponse.cookies?.length) {
-        providerResponse.cookies ??= []
-        providerResponse.cookies.push(...sessionResponse.cookies)
-      }
-
       /**
        * 4. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
        */
@@ -197,6 +193,11 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
           providerResponse.cookies ??= []
           providerResponse.cookies.push(...sessionCookies)
         }
+      }
+
+      if (sessionResponse.cookies?.length) {
+        providerResponse.cookies ??= []
+        providerResponse.cookies.push(...sessionResponse.cookies)
       }
 
       /**
