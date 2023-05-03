@@ -215,7 +215,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 /**
  * Create a new Aponia `Auth` instance.
  */
-export function Aponia<TUser, TSession = TUser, TRefresh = undefined>(
+export function AponiaAuth<TUser, TSession = TUser, TRefresh = undefined>(
   config: AuthConfig<TUser, TSession, TRefresh>
 ) {
   return new Auth(config)

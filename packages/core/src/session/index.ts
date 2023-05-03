@@ -242,7 +242,7 @@ export class SessionManager<
   }
 }
 
-export function Session<TUser, TSession = TUser, TRefresh = undefined>(
+export function AponiaSession<TUser, TSession = TUser, TRefresh = undefined>(
   config: SessionConfig<TUser, TSession, TRefresh>
 ): SessionManager<TUser, TSession, TRefresh> {
   return new SessionManager(config)
