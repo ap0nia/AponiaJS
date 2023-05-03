@@ -128,13 +128,13 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    */
   async handle(request: Request): Promise<InternalResponse> {
     /**
-     * 1. Convert `Request` to internal request.
+     * 1. Convert `Request` to an `InternalRequest`.
      */
     const internalRequest = await toInternalRequest(request)
 
     try {
       /**
-       * 2. Generate an initial internal response with the session info.
+       * 2. Generate an initial `InternalResponse` with the session info.
        * If the `user` property is defined, the user is already logged in.
        */
       const sessionResponse = await this.session.handleRequest(internalRequest)
