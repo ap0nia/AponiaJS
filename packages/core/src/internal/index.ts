@@ -1,14 +1,14 @@
 import { toInternalRequest } from "./request.js"
 import type { InternalResponse } from "./response.js"
 import type { TokenSessionManager } from "../session/token.js"
-import type { DatabaseSessionManager } from "../session/database.js"
+// import type { DatabaseSessionManager } from "../session/database.js"
 import type { CredentialsProvider } from "../providers/core/credentials.js"
 import type { EmailProvider } from "../providers/core/email.js"
 import type { OAuthProvider } from "../providers/core/oauth.js"
 import type { OIDCProvider } from "../providers/core/oidc.js"
 
 /**
- * Static auth pages.
+ * Static auth pages not associated with providers.
  */
 type Pages = {
   /**
@@ -27,7 +27,7 @@ type Pages = {
   logout: string
 
   /**
-   * Utility endpoint to get session client-side.
+   * Utility endpoint to get session.
    */
   session: string
 }
@@ -46,7 +46,7 @@ type AnyProvider<T> =
  */
 type AnySessionManager<TUser, TSession, TRefresh> =
   | TokenSessionManager<TUser, TSession, TRefresh>
-  | DatabaseSessionManager<TUser, TSession, TRefresh>
+  // | DatabaseSessionManager<TUser, TSession, TRefresh>
 
 /**
  * Configuration.
@@ -69,7 +69,7 @@ export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
 }
 
 /**
- * Aponia Auth!
+ * Aponia Auth class.
  */
 export class Auth<TUser, TSession, TRefresh = undefined> {
   /**
@@ -78,17 +78,17 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   providers: AnyProvider<TUser>[]
 
   /**
-   * Session handler.
+   * Session manager.
    */
   session: AnySessionManager<TUser, TSession, TRefresh>
 
   /**
-   * Static auth routes.
+   * Static auth routes handled by Aponia.
    */
   pages: Pages
 
   /**
-   * Dynamic auth routes.
+   * Auth routes handled by providers.
    */
   routes: {
     login: Map<string, AnyProvider<TUser>>
@@ -125,17 +125,20 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    */
   async handle(request: Request): Promise<InternalResponse> {
     /**
-     * 1. Convert request to internal request.
+     * 1. Convert `Request` to internal request.
      */
     const internalRequest = await toInternalRequest(request)
 
     try {
       /**
-       * 2. Generate an initial response with the session info.
-       * - Any discovered `user` will be forwarded to the final response.
+       * 2. Generate an initial internal response with the session info.
+       * If the `user` property is defined, the user is already logged in.
        */
       const sessionResponse = await this.session.handleRequest(internalRequest)
 
+      /**
+       * 3.1 Aponia handles requests for static auth pages.
+       */
       switch (internalRequest.url.pathname) {
         case this.pages.session: {
           return sessionResponse
@@ -152,8 +155,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
 
       /**
-       * 3. Generate a response from the provider.
-       * - If a `user` is generated from a provider, then the session manager should create a new session.
+       * 3.2 A provider handles the request.
        */
       let providerResponse: InternalResponse = {}
 
@@ -183,22 +185,33 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
 
       /**
-       * 4.The session handler handles the provider response.
+       * 4. If a user was returned from the provider response -- they just logged in -- then create a new session.
        */
-      const internalResponse = await this.session.handleResponse(providerResponse)
+      if (providerResponse.user) {
+        /**
+         * A defined new session will have a user property, access token, and possibly a refresh token.
+         * The tokens are encoded for the cookies, and the user property is set for the internal response.
+         */
+        const newSession = await this.session.createSession(providerResponse.user)
+        providerResponse.cookies ??= []
+        providerResponse.cookies.push(...await this.session.createCookies(newSession))
+      }
 
       /**
-       * The final `user` is either from the initial session response or the handled provider response.
+       * The final response has a defined `user` from the initial session response or the provider response.
        */
-      internalResponse.user ||= sessionResponse.user
+      providerResponse.user ||= sessionResponse.user
 
-      return internalResponse
+      return providerResponse
     } catch (error) {
       return { error }
     }
   }
 }
 
+/**
+ * Create a new Aponia Auth instance.
+ */
 export function Aponia<
   TUser, TSession = TUser, TRefresh = undefined
 >(config: AuthConfig<TUser, TSession, TRefresh>) {

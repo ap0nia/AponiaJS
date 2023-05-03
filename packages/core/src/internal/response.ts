@@ -1,5 +1,7 @@
 import type { Cookie } from "../security/cookie.js"
 
+type Nullish = null | undefined | void
+
 /**
  * Internal Response.
  * @internal
@@ -8,7 +10,7 @@ export interface InternalResponse<TUser = any> {
   /**
    * User created during login or refresh.
    */
-  user?: TUser | null | undefined | void
+  user?: TUser | Nullish
 
   /**
    * Response status.

@@ -184,40 +184,6 @@ export class TokenSessionManager<
   }
 
   /**
-   * Handle response.
-   */
-  async handleResponse(response: InternalResponse<TUser>): Promise<InternalResponse<TUser | TSession>> {
-    if (!response.user) return response
-
-    const newSession = await this.createSession(response.user)
-
-    response.cookies ??= []
-    response.cookies.push(...await this.createCookies(newSession))
-
-    return response
-  }
-
-  /**
-   * Get the user from the request.
-   */
-  async getUser(request: Request): Promise<TUser | Nullish> {
-    const cookies = parse(request.headers.get("cookie") ?? "")
-
-    const accessToken = cookies[this.cookies.accessToken.name]
-    if (!accessToken) return null
-
-    let user: TUser | null = null 
-
-    try {
-      user = await this.decode<TUser>({ secret: this.secret, token: accessToken })
-    } catch (e) {
-      console.log('Error decoding access token', e)
-    }
-
-    return user
-  }
-
-  /**
    * Logout the user.
    */
   async logout(request: Request): Promise<InternalResponse<TUser>> {
