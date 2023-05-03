@@ -120,8 +120,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   }
 
   /**
-   * Handle a request and return an internal response.
-   * Specific implementations should convert the internal response accordingly.
+   * Handle a `Request` and return an `InternalResponse`.
+   * Specific usages and framework integrations should handle the `InternalResponse` accordingly.
    */
   async handle(request: Request): Promise<InternalResponse> {
     /**
@@ -185,16 +185,13 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
 
       /**
-       * 4. If a user was returned from the provider response -- they just logged in -- then create a new session.
+       * 4. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
        */
       if (providerResponse.user) {
-        /**
-         * A defined new session will have a user property, access token, and possibly a refresh token.
-         * The tokens are encoded for the cookies, and the user property is set for the internal response.
-         */
-        const newSession = await this.session.createSession(providerResponse.user)
+        const sessionTokens = await this.session.createSession(providerResponse.user)
+        const sessionCookies = await this.session.createCookies(sessionTokens)
         providerResponse.cookies ??= []
-        providerResponse.cookies.push(...await this.session.createCookies(newSession))
+        providerResponse.cookies.push(...sessionCookies)
       }
 
       /**
