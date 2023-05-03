@@ -18,14 +18,14 @@ type NewSession<TUser, TSession, TRefresh> = {
   user: TUser,
   accessToken: TSession,
   refreshToken?: TRefresh 
-} | Nullish;
+}
 
 type TokenMaxAge = {
   accessToken: number
   refreshToken: number
 }
 
-export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
+export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Secret used to sign the tokens.
    */
@@ -49,7 +49,12 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefine
   /**
    * Create a new session from a user.
    */
-  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh>>;
+  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
+
+  /**
+   * Get a user from a session.
+   */
+  getUserFromSession?: (session: TSession) => Awaitable<TUser | Nullish>;
 
   /**
    * Refresh a session from a refresh token.
@@ -61,33 +66,41 @@ export interface TokenSessionConfig<TUser, TSession = TUser, TRefresh = undefine
   /**
    * Invalidate a session.
    */
-  onInvalidateSession?: (session: TSession, refresh?: TRefresh | Nullish) => Awaitable<InternalResponse<TUser> | Nullish>
+  onInvalidateSession?: (
+    session: TSession,
+    refresh?: TRefresh | Nullish
+  ) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
-export class TokenSessionManager<
+export class SessionManager<
   TUser, TSession = TUser, TRefresh = undefined
-> implements TokenSessionConfig<TUser, TSession, TRefresh> {
+> implements SessionConfig<TUser, TSession, TRefresh> {
   secret: string
 
   jwt: Omit<JWTOptions, 'maxAge'>
 
   encode: (params: JWTEncodeParams) => Awaitable<string>
 
-  decode: <T>(params: JWTDecodeParams) => Awaitable<T | null>
+  decode: <T>(params: JWTDecodeParams) => Awaitable<T | Nullish>
 
   maxAge: TokenMaxAge
 
   cookies: CookiesOptions
 
-  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh>>;
+  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
+
+  getUserFromSession: (session: TSession) => Awaitable<TUser | Nullish>;
 
   handleRefresh: (
     tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
   ) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
 
-  onInvalidateSession?: (session: TSession, refresh?: TRefresh | Nullish) => Awaitable<InternalResponse<TUser> | Nullish>
+  onInvalidateSession?: (
+    session: TSession,
+    refresh?: TRefresh | Nullish
+  ) => Awaitable<InternalResponse<TUser> | Nullish>
 
-  constructor(config: TokenSessionConfig<TUser, TSession, TRefresh>) {
+  constructor(config: SessionConfig<TUser, TSession, TRefresh>) {
     this.secret = config.secret;
     this.jwt = {
       ...config.jwt,
@@ -101,6 +114,7 @@ export class TokenSessionManager<
     this.decode = config.jwt?.decode ?? decode
     this.cookies = createCookiesOptions(config.useSecureCookies)
     this.createSession = config.createSession;
+    this.getUserFromSession = config.getUserFromSession ?? ((session: TSession) => session as any);
     this.handleRefresh = config.handleRefresh;
     this.onInvalidateSession = config.onInvalidateSession;
   }
@@ -151,11 +165,12 @@ export class TokenSessionManager<
     const accessToken = request.cookies[this.cookies.accessToken.name]
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
 
-    let access: TSession | null = null
-    let refresh: TRefresh | null = null
+    let access: TSession | Nullish = null
+    let refresh: TRefresh | Nullish = null
 
     try { 
       access = await this.decode<TSession>({ secret: this.secret, token: accessToken })
+      response.user = access ? await this.getUserFromSession(access) : null
     } catch (e) {
       console.log('Error decoding access token', e)
     }
@@ -173,7 +188,7 @@ export class TokenSessionManager<
       response.cookies.push(...sessionCookies)
     }
     
-    response.user = sessionTokens?.user
+    response.user ||= sessionTokens?.user
     return response
   }
 
@@ -186,8 +201,8 @@ export class TokenSessionManager<
     const accessToken = cookies[this.cookies.accessToken.name]
     const refreshToken = cookies[this.cookies.refreshToken.name]
 
-    let session: TSession | null = null
-    let refresh: TRefresh | null = null
+    let session: TSession | Nullish = null
+    let refresh: TRefresh | Nullish = null
 
     try { 
       session = await this.decode<TSession>({ secret: this.secret, token: accessToken })
@@ -223,8 +238,8 @@ export class TokenSessionManager<
   }
 }
 
-export function TokenSession<TUser, TSession = TUser, TRefresh = undefined>(
-  config: TokenSessionConfig<TUser, TSession, TRefresh>
-): TokenSessionManager<TUser, TSession, TRefresh> {
-  return new TokenSessionManager(config)
+export function Session<TUser, TSession = TUser, TRefresh = undefined>(
+  config: SessionConfig<TUser, TSession, TRefresh>
+): SessionManager<TUser, TSession, TRefresh> {
+  return new SessionManager(config)
 }

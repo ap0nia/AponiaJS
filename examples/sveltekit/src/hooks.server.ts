@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { Aponia, TokenSession, Credentials, GitHub, Google } from 'aponia'
+import { Aponia, Session, Credentials, GitHub, Google } from 'aponia'
 import createAuthHandle from '@aponia/integrations-sveltekit'
 import { sequence } from '@sveltejs/kit/hooks'
 import type { Handle } from '@sveltejs/kit'
@@ -14,10 +14,10 @@ type Session = User
 type Refresh = User
 
 const auth = Aponia<User, Session, Refresh>({
-  session: TokenSession({
+  session: Session({
     secret: 'secret',
     createSession: async (user) => {
-      return { accessToken: user, refreshToken: user }
+      return { user, accessToken: user, refreshToken: user }
     },
     handleRefresh: async (tokens) => {
       if (tokens.accessToken) return

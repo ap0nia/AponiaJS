@@ -1,7 +1,6 @@
 import { toInternalRequest } from "./request.js"
 import type { InternalResponse } from "./response.js"
-import type { TokenSessionManager } from "../session/token.js"
-// import type { DatabaseSessionManager } from "../session/database.js"
+import type { SessionManager } from "../session/index.js"
 import type { CredentialsProvider } from "../providers/core/credentials.js"
 import type { EmailProvider } from "../providers/core/email.js"
 import type { OAuthProvider } from "../providers/core/oauth.js"
@@ -27,7 +26,7 @@ type Pages = {
   logout: string
 
   /**
-   * Utility endpoint to get session.
+   * Endpoint to get session.
    */
   session: string
 }
@@ -42,13 +41,6 @@ type AnyProvider<T> =
   | EmailProvider<T>
 
 /**
- * Any session manager.
- */
-type AnySessionManager<TUser, TSession, TRefresh> =
-  | TokenSessionManager<TUser, TSession, TRefresh>
-  // | DatabaseSessionManager<TUser, TSession, TRefresh>
-
-/**
  * Configuration.
  */
 export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
@@ -60,7 +52,7 @@ export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Session manager.
    */
-  session: AnySessionManager<TUser, TSession, TRefresh>
+  session: SessionManager<TUser, TSession, TRefresh>
 
   /**
    * Static auth pages.
@@ -69,7 +61,7 @@ export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
 }
 
 /**
- * Aponia Auth class.
+ * Aponia `Auth` class.
  */
 export class Auth<TUser, TSession, TRefresh = undefined> {
   /**
@@ -80,7 +72,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   /**
    * Session manager.
    */
-  session: AnySessionManager<TUser, TSession, TRefresh>
+  session: SessionManager<TUser, TSession, TRefresh>
 
   /**
    * Static auth routes handled by Aponia.
@@ -88,7 +80,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   pages: Pages
 
   /**
-   * Auth routes handled by providers.
+   * Dynamic auth routes handled by providers.
    */
   routes: {
     login: Map<string, AnyProvider<TUser>>
@@ -112,8 +104,19 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       callback: new Map(),
     }
 
+    /**
+     * Each provider has internal routes for login and callback that can be overridden.
+     * Use that info to register the provider into the route maps.
+     */
     this.providers.forEach(provider => {
-      provider.setJwtOptions(this.session.jwt).setCookiesOptions(this.session.cookies)
+      /**
+       * All providers will inherit JWT and cookie options from the session manager.
+       * When used standalone, they can be defined in the provider config directly.
+       */
+      provider
+        .setJwtOptions(this.session.jwt)
+        .setCookiesOptions(this.session.cookies)
+
       this.routes.login.set(provider.pages.login.route, provider)
       this.routes.callback.set(provider.pages.callback.route, provider)
     })
@@ -189,9 +192,11 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
        */
       if (providerResponse.user) {
         const sessionTokens = await this.session.createSession(providerResponse.user)
-        const sessionCookies = await this.session.createCookies(sessionTokens)
-        providerResponse.cookies ??= []
-        providerResponse.cookies.push(...sessionCookies)
+        if (sessionTokens) {
+          const sessionCookies = await this.session.createCookies(sessionTokens)
+          providerResponse.cookies ??= []
+          providerResponse.cookies.push(...sessionCookies)
+        }
       }
 
       /**
@@ -207,10 +212,10 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 }
 
 /**
- * Create a new Aponia Auth instance.
+ * Create a new Aponia `Auth` instance.
  */
-export function Aponia<
-  TUser, TSession = TUser, TRefresh = undefined
->(config: AuthConfig<TUser, TSession, TRefresh>) {
+export function Aponia<TUser, TSession = TUser, TRefresh = undefined>(
+  config: AuthConfig<TUser, TSession, TRefresh>
+) {
   return new Auth(config)
 }
