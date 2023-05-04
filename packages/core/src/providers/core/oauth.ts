@@ -198,9 +198,11 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
     const url = new URL(this.endpoints.authorization.url)
+
     const cookies: Cookie[] = []
 
     const params = this.endpoints.authorization.params ?? {}
+
     Object.entries(params).forEach(([key, value]) => {
       if (typeof value === 'string') {
         url.searchParams.set(key, value)
@@ -294,7 +296,9 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
     if (!profile) throw new Error("TODO: Handle missing profile")
 
     const processedResponse = (await this.onAuth(profile)) || {}
+
     processedResponse.cookies ??= []
+
     processedResponse.cookies.push(...cookies)
 
     return processedResponse
@@ -311,39 +315,52 @@ export function mergeOAuthOptions(
 ): OAuthConfig<any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
-  const authorizationUrl = typeof userOptions.endpoints?.authorization === 'string' 
+  const client = {
+    ...defaultOptions.client,
+    ...userOptions.client,
+    client_id: userOptions.clientId,
+    client_secret: userOptions.clientSecret,
+  }
+
+  const authorization = typeof userOptions.endpoints?.authorization === 'object'
+    ? { ...defaultOptions.endpoints.authorization, ...userOptions.endpoints.authorization }
+    : { ...defaultOptions.endpoints.authorization }
+
+  authorization.url = typeof userOptions.endpoints?.authorization === 'string' 
     ? userOptions.endpoints.authorization 
     : (userOptions.endpoints?.authorization?.url ?? defaultOptions.endpoints.authorization.url)
 
-  const authorizationOptions = typeof userOptions.endpoints?.authorization === 'object'
-    ? userOptions.endpoints.authorization
-    : {}
+  authorization.params = {
+    ...defaultOptions.endpoints?.authorization?.params,
+    client_id: userOptions.clientId,
+    response_type: 'code',
+  }
 
-  const tokenUrl = typeof userOptions.endpoints?.token === 'string'
+  const token = typeof userOptions.endpoints?.token === 'object'
+    ? { ...defaultOptions.endpoints.token, ...userOptions.endpoints.token }
+    : { ...defaultOptions.endpoints.token }
+
+  token.url = typeof userOptions.endpoints?.token === 'string'
     ? userOptions.endpoints.token
     : (userOptions.endpoints?.token?.url ?? defaultOptions.endpoints.token.url)
 
-  const tokenOptions = typeof userOptions.endpoints?.token === 'object'
-    ? userOptions.endpoints.token
-    : {}
+  const userinfo = typeof userOptions.endpoints?.userinfo === 'object'
+    ? { ...defaultOptions.endpoints.userinfo, ...userOptions.endpoints.userinfo }
+    : { ...defaultOptions.endpoints.userinfo }
 
-  const userinfoUrl = typeof userOptions.endpoints?.userinfo === 'string'
+  userinfo.url = typeof userOptions.endpoints?.userinfo === 'string'
     ? userOptions.endpoints.userinfo
     : (userOptions.endpoints?.userinfo?.url ?? defaultOptions.endpoints.userinfo.url)
 
-  const userinfoOptions = typeof userOptions.endpoints?.userinfo === 'object'
-    ? userOptions.endpoints.userinfo
-    : {}
+  /**
+   * Default jwt options, manually set later if needed.
+   */
+  const jwt = { ...userOptions.jwt, secret: '' }
 
   return {
     ...userOptions,
     id,
-    client: {
-      ...defaultOptions.client,
-      ...userOptions.client,
-      client_id: userOptions.clientId,
-      client_secret: userOptions.clientSecret,
-    },
+    client,
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
     checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
     pages: {
@@ -356,37 +373,8 @@ export function mergeOAuthOptions(
         methods: userOptions.pages?.callback?.methods ?? ['GET'],
       }
     },
-    endpoints: {
-      authorization: {
-        ...defaultOptions.endpoints.authorization,
-        ...authorizationOptions,
-        url: authorizationUrl,
-        params: {
-          ...defaultOptions.endpoints?.authorization?.params,
-          client_id: userOptions.clientId,
-          response_type: 'code',
-        },
-      },
-      token: {
-        ...defaultOptions.endpoints.token,
-        ...tokenOptions,
-        url: tokenUrl,
-      },
-      userinfo: {
-        ...defaultOptions.endpoints.userinfo,
-        ...userinfoOptions,
-        url: userinfoUrl,
-      },
-    },
-    // default cookie options, manually set later if needed.
+    endpoints: { authorization, token, userinfo },
     cookies: createCookiesOptions(userOptions.useSecureCookies),
-
-    // default jwt options, manually set later if needed.
-    jwt: {
-      ...userOptions.jwt,
-      secret: ''  // invalid secret: make sure to set it later if using JWT.
-    },
-
+    jwt,
   }
 }
-

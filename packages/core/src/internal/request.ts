@@ -1,11 +1,6 @@
 import { parse } from "cookie"
 
-export interface InternalRequest<T = any> {
-  /**
-   * User created during refresh.
-   */
-  user?: T
-
+export interface InternalRequest {
   /**
    * Original request.
    */

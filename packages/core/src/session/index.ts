@@ -72,6 +72,13 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   ) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
+/**
+ * Ensure a possibly async value is a `Promise`.
+ */
+function asPromise<T>(value: Awaitable<T>): Promise<T> {
+  return value instanceof Promise ? value : Promise.resolve(value)
+}
+
 export class SessionManager<
   TUser, TSession = TUser, TRefresh = undefined
 > implements SessionConfig<TUser, TSession, TRefresh> {
@@ -119,6 +126,32 @@ export class SessionManager<
     this.onInvalidateSession = config.onInvalidateSession;
   }
 
+  async decodeTokens(tokens: { accessToken?: string, refreshToken?: string }) {
+    const access = await asPromise(
+      this.decode<TSession>({ secret: this.secret, token: tokens.accessToken })
+    ).catch(e => {
+      console.log('Error decoding access token', e)
+    })
+
+    const refresh = await asPromise(
+      this.decode<TRefresh>({ secret: this.secret, token: tokens.refreshToken })
+    ).catch(e => {
+      console.log('Error decoding access token', e)
+    })
+
+    return { 
+      /**
+       * Session from the access token.
+       */
+      access,
+
+      /**
+       * Data from the refresh token.
+       */
+      refresh 
+    }
+  }
+
   async createCookies(newSession: NewSession<TUser, TSession, TRefresh>): Promise<Cookie[]> {
     const cookies: Cookie[] = []
 
@@ -163,23 +196,12 @@ export class SessionManager<
     response.cookies ??= []
 
     const accessToken = request.cookies[this.cookies.accessToken.name]
+
     const refreshToken = request.cookies[this.cookies.refreshToken.name]
 
-    let access: TSession | Nullish = null
-    let refresh: TRefresh | Nullish = null
+    const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    try { 
-      access = await this.decode<TSession>({ secret: this.secret, token: accessToken })
-      response.user = access ? await this.getUserFromSession(access) : null
-    } catch (e) {
-      console.log('Error decoding access token', e)
-    }
-
-    try {
-      refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
-    } catch (e) {
-      console.log('Error decoding refresh token', e)
-    }
+    response.user = access ? await this.getUserFromSession(access) : null
 
     /**
      * The user-defined function decides when to create new tokens.
@@ -188,11 +210,11 @@ export class SessionManager<
     const sessionTokens = await this.handleRefresh({ accessToken: access, refreshToken: refresh })
 
     if (sessionTokens) {
-      const sessionCookies = await this.createCookies(sessionTokens)
-      response.cookies.push(...sessionCookies)
+      response.cookies.push(...await this.createCookies(sessionTokens))
     }
     
     response.user ||= sessionTokens?.user
+
     return response
   }
 
@@ -203,28 +225,15 @@ export class SessionManager<
     const cookies = parse(request.headers.get("cookie") ?? "")
 
     const accessToken = cookies[this.cookies.accessToken.name]
+
     const refreshToken = cookies[this.cookies.refreshToken.name]
 
-    let session: TSession | Nullish = null
-    let refresh: TRefresh | Nullish = null
+    const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    try { 
-      session = await this.decode<TSession>({ secret: this.secret, token: accessToken })
-    } catch (e) {
-      console.log('Error decoding access token', e)
-    }
-
-    try {
-      refresh = await this.decode<TRefresh>({ secret: this.secret, token: refreshToken })
-    } catch (e) {
-      console.log('Error decoding refresh token', e)
-    }
-
-    const response = session
-      ? (await this.onInvalidateSession?.(session, refresh)) ?? {}
-      : {}
+    const response = (access && await this.onInvalidateSession?.(access, refresh)) || {}
 
     response.cookies ??= []
+
     response.cookies.push(
       {
         name: this.cookies.accessToken.name,

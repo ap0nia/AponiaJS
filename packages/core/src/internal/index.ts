@@ -1,4 +1,5 @@
 import { toInternalRequest } from "./request.js"
+import type { InternalRequest } from "./request.js"
 import type { InternalResponse } from "./response.js"
 import type { SessionManager } from "../session/index.js"
 import type { CredentialsProvider } from "../providers/core/credentials.js"
@@ -7,9 +8,18 @@ import type { OAuthProvider } from "../providers/core/oauth.js"
 import type { OIDCProvider } from "../providers/core/oidc.js"
 
 /**
+ * Any core provider.
+ */
+type AnyProvider<T> = 
+  | OAuthProvider<any, T> 
+  | OIDCProvider<any, T> 
+  | CredentialsProvider<T> 
+  | EmailProvider<T>
+
+/**
  * Static auth pages not associated with providers.
  */
-type Pages = {
+interface Pages {
   /**
    * Redirect URL after logging in.
    */
@@ -30,15 +40,6 @@ type Pages = {
    */
   session: string
 }
-
-/**
- * Any core provider.
- */
-type AnyProvider<T> = 
-  | OAuthProvider<any, T> 
-  | OIDCProvider<any, T> 
-  | CredentialsProvider<T> 
-  | EmailProvider<T>
 
 /**
  * Configuration.
@@ -127,88 +128,86 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
    * Specific usages and framework integrations should handle the `InternalResponse` accordingly.
    */
   async handle(request: Request): Promise<InternalResponse> {
-    /**
-     * 1. Convert `Request` to an `InternalRequest`.
-     */
     const internalRequest = await toInternalRequest(request)
 
-    try {
-      /**
-       * 2. Generate an initial `InternalResponse` with the session info.
-       * The `user` property will be defined if they're already logged in.
-       * `cookies` may be defined if a new session was created.
-       */
-      const sessionResponse = await this.session.handleRequest(internalRequest)
+    const internalResponse = await this
+      .generateInternalResponse(internalRequest)
+      .catch(error => {
+        return { error }
+      })
 
-      /**
-       * 3.1 Aponia handles requests for static auth pages.
-       */
-      switch (internalRequest.url.pathname) {
-        case this.pages.session: {
-          return sessionResponse
-        }
+    return internalResponse
+  }
 
-        case this.pages.logout: {
-          const response = await this.session.logout(internalRequest.request)
-          if (!response.redirect) {
-            response.redirect = this.pages.logoutRedirect
-            response.status = 302
-          }
-          return response
-        }
+  async generateInternalResponse(internalRequest: InternalRequest): Promise<InternalResponse> {
+    const { url, request } = internalRequest
+
+    /**
+     * 1. Generate an initial `InternalResponse` with the session info.
+     * `user` will be defined if already logged in.
+     * `cookies` will be defined if a new session was created.
+     */
+    const sessionResponse = await this.session.handleRequest(internalRequest)
+
+    /**
+     * 2.1 Aponia handles requests for static auth pages.
+     */
+    switch (url.pathname) {
+      case this.pages.session: {
+        return sessionResponse
       }
 
-      /**
-       * 3.2 A provider handles the request.
-       */
-      let providerResponse: InternalResponse = {}
-
-      const signinHandler = this.routes.login.get(internalRequest.url.pathname)
-
-      if (signinHandler && signinHandler.pages.login.methods.includes(request.method)) {
-        providerResponse = await signinHandler.login(internalRequest)
-        if (providerResponse.user && !providerResponse.redirect) {
-          providerResponse.redirect = this.pages.loginRedirect
-          providerResponse.status = 302
+      case this.pages.logout: {
+        const response = await this.session.logout(request)
+        if (!response.redirect) {
+          response.redirect = this.pages.logoutRedirect
+          response.status = 302
         }
+        return response
       }
-
-      const callbackHandler = this.routes.callback.get(internalRequest.url.pathname)
-
-      if (callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)) {
-        providerResponse = await callbackHandler.callback(internalRequest)
-        if (providerResponse.user && !providerResponse.redirect) {
-          providerResponse.redirect = this.pages.loginRedirect
-          providerResponse.status = 302
-        }
-      }
-
-      /**
-       * 4. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
-       */
-      if (providerResponse.user) {
-        const sessionTokens = await this.session.createSession(providerResponse.user)
-        if (sessionTokens) {
-          const sessionCookies = await this.session.createCookies(sessionTokens)
-          providerResponse.cookies ??= []
-          providerResponse.cookies.push(...sessionCookies)
-        }
-      }
-
-      if (sessionResponse.cookies?.length) {
-        providerResponse.cookies ??= []
-        providerResponse.cookies.push(...sessionResponse.cookies)
-      }
-
-      /**
-       * The final response has a defined `user` from the initial session response or the provider response.
-       */
-      providerResponse.user ||= sessionResponse.user
-
-      return providerResponse
-    } catch (error) {
-      return { error }
     }
+
+    /**
+     * 2.2 A provider handles the request.
+     * Cookies may be set by the initial session response when refreshing a session.
+     */
+    let providerResponse: InternalResponse = { cookies: sessionResponse.cookies }
+
+    const loginHandler = this.routes.login.get(url.pathname)
+
+    if (loginHandler && loginHandler.pages.login.methods.includes(request.method)) {
+      providerResponse = await loginHandler.login(internalRequest)
+    }
+
+    const callbackHandler = this.routes.callback.get(url.pathname)
+
+    if (callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)) {
+      providerResponse = await callbackHandler.callback(internalRequest)
+      if (providerResponse.user && !providerResponse.redirect) {
+        providerResponse.redirect = this.pages.loginRedirect
+        providerResponse.status = 302
+      }
+    }
+
+    /**
+     * 3. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
+     * If the session manager __doesn't__ create a session, then `user` will be unset.
+     */
+    if (providerResponse.user) {
+      const sessionTokens = await this.session.createSession(providerResponse.user)
+      providerResponse.user = sessionTokens?.user
+      if (sessionTokens) {
+        providerResponse.cookies ??= []
+        providerResponse.cookies.push(...await this.session.createCookies(sessionTokens))
+      }
+    }
+
+    /**
+     * The final response has a defined `user` from the initial session response or the provider response.
+     */
+    providerResponse.user ||= sessionResponse.user
+
+    return providerResponse
   }
 }
 
