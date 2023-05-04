@@ -1,6 +1,6 @@
 {
   "name": "aponia",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -19,17 +19,6 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
-    },
-    "./providers/": {
-      "import": "./dist/providers/"
-    },
-    "./providers/*": {
-      "types": "./dist/providers/*.d.ts",
-      "import": "./dist/providers/*.js"
-    },
-    "./providers/oidc": {
-      "types": "./dist/providers/oidc.d.ts",
-      "import": "./dist/providers/oidc.js"
     }
   },
   "publishConfig": {
