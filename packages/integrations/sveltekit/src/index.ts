@@ -2,11 +2,25 @@ import type { Auth } from 'aponia'
 import { json, redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
 
+const defaultLocalsUserKey = 'user'
+
+const defaultLocalsAuthKey = 'aponia-auth'
+
 export interface Options {
   /**
-   * Which key to store the user under in locals, if found during hook.
+   * Which key to store the user in locals, if found during hook.
    */
-  localsUserKey?: string
+  localsUserKey?: keyof App.Locals
+
+  /**
+   * Which key to store the internally generated auth response in locals if debugging.
+   */
+  localsAuthKey?: keyof App.Locals
+
+  /**
+   * Whether to enable debugging.
+   */
+  debug?: boolean
 }
 
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
@@ -33,7 +47,11 @@ export function createAuthHandle<TUser, TSession, TRefresh>(
       return json(internalResponse.body)
     }
 
-    (event.locals as any)[options.localsUserKey ?? 'user'] = internalResponse.user
+    if (options.debug) {
+      (event.locals as any)[options.localsAuthKey ?? defaultLocalsAuthKey] = internalResponse
+    }
+
+    (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey] = internalResponse.user
 
     return await resolve(event)
   }
