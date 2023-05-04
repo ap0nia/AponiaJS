@@ -1,16 +1,14 @@
 {
   "name": "aponia",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
     "prepublish": "npm run build"
   },
   "files": [
-    "dist/*.js",
-    "dist/*.d.ts*",
-    "dist/providers",
-    "dist/src"
+    "src",
+    "dist"
   ],
   "main": "dist/index.js",
   "module": "dist/index.js",
