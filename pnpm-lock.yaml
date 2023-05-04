@@ -154,6 +154,22 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1(@types/node@18.15.11)
 
+  packages/providers:
+    dependencies:
+      '@auth/core':
+        specifier: ^0.7.1
+        version: 0.7.1
+      aponia:
+        specifier: '*'
+        version: link:../core
+    devDependencies:
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.0
+      typescript:
+        specifier: ^5.0.4
+        version: 5.0.4
+
 packages:
 
   /@algolia/autocomplete-core@1.7.4:
@@ -277,6 +293,22 @@ packages:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.3
       '@jridgewell/trace-mapping': 0.3.18
+    dev: false
+
+  /@auth/core@0.7.1:
+    resolution: {integrity: sha512-aAgzC/VlfnvxsFYp5Wau1pfIltRUBvfVxECR0imDPUznwXIkD9alvrai60tfImtPfXp1fnJpcKfiONpF5Rg8VQ==}
+    peerDependencies:
+      nodemailer: ^6.8.0
+    peerDependenciesMeta:
+      nodemailer:
+        optional: true
+    dependencies:
+      '@panva/hkdf': 1.0.4
+      cookie: 0.5.0
+      jose: 4.13.1
+      oauth4webapi: 2.2.0
+      preact: 10.11.3
+      preact-render-to-string: 5.2.3(preact@10.11.3)
     dev: false
 
   /@babel/code-frame@7.21.4:
@@ -7760,6 +7792,19 @@ packages:
       picocolors: 1.0.0
       source-map-js: 1.0.2
 
+  /preact-render-to-string@5.2.3(preact@10.11.3):
+    resolution: {integrity: sha512-aPDxUn5o3GhWdtJtW0svRC2SS/l8D9MAgo2+AWml+BhDImb27ALf04Q2d+AHqUUOc6RdSXFIBVa2gxzgMKgtZA==}
+    peerDependencies:
+      preact: '>=10'
+    dependencies:
+      preact: 10.11.3
+      pretty-format: 3.8.0
+    dev: false
+
+  /preact@10.11.3:
+    resolution: {integrity: sha512-eY93IVpod/zG3uMF22Unl8h9KkrcKIRs2EGar8hwLZZDU1lkjph303V9HZBwufh2s736U6VXuhD109LYqPoffg==}
+    dev: false
+
   /prebuild-install@7.1.1:
     resolution: {integrity: sha512-jAXscXWMcCK8GgCoHOfIr0ODh5ai8mj63L2nWrjuAgXE6tDyYGnx4/8o/rCgU+B4JSyZBKbeZqzhtwtC3ovxjw==}
     engines: {node: '>=10'}
@@ -7795,6 +7840,10 @@ packages:
     dependencies:
       lodash: 4.17.21
       renderkid: 3.0.0
+    dev: false
+
+  /pretty-format@3.8.0:
+    resolution: {integrity: sha512-WuxUnVtlWL1OfZFQFuqvnvs6MiAGk9UNsBostyBOB0Is9wb5uRESevA6rnl/rkksXaGX3GzZhPup5d6Vp1nFew==}
     dev: false
 
   /pretty-time@1.1.0:

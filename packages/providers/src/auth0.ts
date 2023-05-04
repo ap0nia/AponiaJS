@@ -1,4 +1,5 @@
-import { OIDCProvider, mergeOIDCOptions } from "../core/oidc.js"
+import {} from '@auth/core'
+import { OIDCProvider, mergeOIDCOptions } from "aponia/providers/oidc.js"
 import type { OIDCDefaultConfig, OIDCUserConfig } from "../core/oidc.js"
 
 /** @see [User Profile Structure](https://auth0.com/docs/manage-users/user-accounts/user-profiles/user-profile-structure) */

@@ -2,10 +2,10 @@ import { toInternalRequest } from "./request.js"
 import type { InternalRequest } from "./request.js"
 import type { InternalResponse } from "./response.js"
 import type { SessionManager } from "../session.js"
-import type { CredentialsProvider } from "../providers/core/credentials.js"
-import type { EmailProvider } from "../providers/core/email.js"
-import type { OAuthProvider } from "../providers/core/oauth.js"
-import type { OIDCProvider } from "../providers/core/oidc.js"
+import type { CredentialsProvider } from "../providers/credentials.js"
+import type { EmailProvider } from "../providers/email.js"
+import type { OAuthProvider } from "../providers/oauth.js"
+import type { OIDCProvider } from "../providers/oidc.js"
 
 type Awaitable<T> = PromiseLike<T> | T
 

@@ -1,5 +1,5 @@
-import type { InternalRequest } from "../../internal/request.js";
-import type { InternalResponse } from "../../internal/response.js";
+import type { InternalRequest } from "../internal/request.js";
+import type { InternalResponse } from "../internal/response.js";
 
 type Nullish = void | null | undefined
 

@@ -3,8 +3,8 @@ import { encode, decode } from "./jwt.js"
 import type { Cookie } from "./cookie.js"
 import type { JWTOptions } from "./jwt.js"
 import type { InternalRequest } from '../internal/request.js'
-import type { OAuthProvider } from "../providers/core/oauth.js"
-import type { OIDCProvider } from '../providers/core/oidc.js'
+import type { OAuthProvider } from "../providers/oauth.js"
+import type { OIDCProvider } from '../providers/oidc.js'
 
 type CheckPayload = { value: string }
 
