@@ -20,6 +20,11 @@ type AnyProvider<T> =
   | CredentialsProvider<T> 
   | EmailProvider<T>
 
+interface Endpoint {
+  route: string
+  methods: string[]
+}
+
 /**
  * Static auth pages not associated with providers.
  */
@@ -27,27 +32,27 @@ interface Pages {
   /**
    * Logout endpoint.
    */
-  logout: string
+  logout: Endpoint
 
   /**
    * Endpoint to update user.
    */
-  update: string
+  update: Endpoint
 
   /**
    * Endpoint to request password reset.
    */
-  forgot: string
+  forgot: Endpoint
 
   /**
    * Endpoint to reset password.
    */
-  reset: string
+  reset: Endpoint
 
   /**
    * Endpoint to verify account (email).
    */
-  verify: string
+  verify: Endpoint
 }
 
 /**
@@ -120,11 +125,11 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     this.session = config.session
 
     this.pages = {
-      logout: config.pages?.logout ?? '/auth/logout',
-      update: config.pages?.update ?? '/auth/update',
-      forgot: config.pages?.forgot ?? '/auth/forgot',
-      reset: config.pages?.reset ?? '/auth/reset',
-      verify: config.pages?.verify ?? '/auth/verify',
+      logout: config.pages?.logout ?? { route: '/auth/logout', methods: ['POST'] },
+      update: config.pages?.update ?? { route: '/auth/update', methods: ['POST'] },
+      forgot: config.pages?.forgot ?? { route: '/auth/forgot', methods: ['POST'] },
+      reset: config.pages?.reset ?? { route: '/auth/reset', methods: ['POST'] },
+      verify: config.pages?.verify ?? { route: '/auth/verify', methods: ['POST'] },
     }
 
     this.callbacks = config.callbacks ?? {}
@@ -180,20 +185,35 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
      * 2.1 Aponia handles requests for static auth pages.
      */
     switch (url.pathname) {
-      case this.pages.logout:
-        return (await this.callbacks.logout?.(internalRequest)) ?? this.session.logout(request)
+      case this.pages.logout.route:
+        return await (
+          this.pages.logout.methods.includes(request.method) && 
+          this.callbacks.logout?.(internalRequest)
+        ) || this.session.logout(request)
 
-      case this.pages.update:
-        return (await this.callbacks.update?.(internalRequest)) ?? {}
+      case this.pages.update.route:
+        return await (
+          this.pages.update.methods.includes(request.method) &&
+          this.callbacks.update?.(internalRequest)
+        ) || {}
 
-      case this.pages.forgot:
-        return (await this.callbacks.forgot?.(internalRequest)) ?? {}
+      case this.pages.forgot.route:
+        return await (
+          this.pages.forgot.methods.includes(request.method) &&
+          this.callbacks.forgot?.(internalRequest)
+        ) || {}
 
-      case this.pages.reset:
-        return (await this.callbacks.reset?.(internalRequest)) ?? {}
+      case this.pages.reset.route:
+        return await (
+          this.pages.reset.methods.includes(request.method) &&
+          this.callbacks.reset?.(internalRequest)
+        ) || {}
 
-      case this.pages.verify:
-        return (await this.callbacks.verify?.(internalRequest)) ?? {}
+      case this.pages.verify.route:
+        return await (
+          this.pages.verify.methods.includes(request.method) &&
+          this.callbacks.verify?.(internalRequest)
+        ) || {}
     }
 
     const loginHandler = this.routes.login.get(url.pathname)
