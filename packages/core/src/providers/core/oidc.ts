@@ -139,8 +139,6 @@ interface OIDCEndpoints<TProfile, TUser = TProfile> {
  * @param TSession Session.
  */
 export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TProfile, TUser> {
-  initialized?: boolean
-
   id: string
 
   type = "oidc" as const
@@ -182,7 +180,6 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
     // OAuth doesn't use discovery for authorization server, only OIDC.
     this.authorizationServer = { issuer: options.issuer }
-    this.initialized = false
   }
 
   setJwtOptions(options: JWTOptions) {
@@ -195,12 +192,19 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
     return this
   }
 
+  /**
+   * Set the OIDC provider's `authorizationServer`.
+   * `authorizationServer` will not be valid on creation; it must be asynchronously initialized at least once.
+   */
   async initialize() {
     const issuer = new URL(this.authorizationServer.issuer)
+
     const discoveryResponse = await oauth.discoveryRequest(issuer)
+
     const authorizationServer = await oauth.processDiscoveryResponse(issuer, discoveryResponse)
 
     const supportsPKCE = authorizationServer.code_challenge_methods_supported?.includes('S256')
+
     if (this.checks?.includes('pkce') && !supportsPKCE) {
       this.checks = ['nonce']
     }
@@ -212,13 +216,12 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
    * Login the user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
-    if (!this.initialized) await this.initialize()
-
     if (!this.authorizationServer.authorization_endpoint) {
       throw new TypeError(`Invalid authorization endpoint. ${this.authorizationServer.authorization_endpoint}`)
     }
 
     const url = new URL(this.authorizationServer.authorization_endpoint)
+
     const cookies: Cookie[] = []
 
     Object.entries(this.endpoints?.authorization?.params ?? {}).forEach(([key, value]) => {
@@ -261,8 +264,6 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
    * Callback after the user has logged in.
    */
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    if (!this.initialized) await this.initialize()
-
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)
@@ -317,16 +318,17 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
     const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
     const processedResponse = (await this.onAuth(profile)) || {}
+
     processedResponse.cookies ??= []
+
     processedResponse.cookies.push(...cookies)
 
     return processedResponse
   }
 }
 
-
 /**
- * Merge user options with default options.
+ * Merge user provided OIDC provider options with the OIDC provider's default options.
  */
 export function mergeOIDCOptions(
   userOptions: OIDCUserConfig<any, any>,
@@ -334,28 +336,43 @@ export function mergeOIDCOptions(
 ): OIDCConfig<any, any> {
   const id = userOptions.id ?? defaultOptions.id
 
-  const authorizationOptions = typeof userOptions.endpoints?.authorization === 'object'
-    ? userOptions.endpoints.authorization
-    : {}
+  const client = {
+    ...defaultOptions.client,
+    ...userOptions.client,
+    client_id: userOptions.clientId,
+    client_secret: userOptions.clientSecret,
+  }
 
-  const tokenOptions = typeof userOptions.endpoints?.token === 'object'
-    ? userOptions.endpoints.token
-    : {}
+  const authorization = typeof userOptions.endpoints?.authorization === 'object'
+    ? { ...defaultOptions.endpoints?.authorization, ...userOptions.endpoints.authorization }
+    : { ...defaultOptions.endpoints?.authorization }
 
-  const userinfoOptions = typeof userOptions.endpoints?.userinfo === 'object'
-    ? userOptions.endpoints.userinfo
-    : {}
+  authorization.params = {
+    ...defaultOptions.endpoints?.authorization?.params,
+    ...authorization.params,
+    client_id: userOptions.clientId,
+    response_type: 'code',
+  }
+
+  const token = typeof userOptions.endpoints?.token === 'object'
+    ? { ...defaultOptions.endpoints?.token, ...userOptions.endpoints.token }
+    : { ...defaultOptions.endpoints?.token }
+
+  const userinfo = typeof userOptions.endpoints?.userinfo === 'object'
+    ? { ...defaultOptions.endpoints?.userinfo, ...userOptions.endpoints.userinfo }
+    : { ...defaultOptions.endpoints?.userinfo }
+
+  /** Default jwt options, manually set later if needed. */
+  const jwt = { ...userOptions.jwt, secret: '' }
+
+  /** Default cookie options, manually set later if needed. */
+  const cookies = createCookiesOptions(userOptions.useSecureCookies)
 
   return {
     ...userOptions,
     ...defaultOptions,
     id,
-    client: {
-      ...defaultOptions.client,
-      ...userOptions.client,
-      client_id: userOptions.clientId,
-      client_secret: userOptions.clientSecret,
-    },
+    client,
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
     checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
     pages: {
@@ -368,35 +385,8 @@ export function mergeOIDCOptions(
         methods: userOptions.pages?.callback?.methods ?? ['GET'],
       }
     },
-    endpoints: {
-      authorization: {
-        ...defaultOptions.endpoints?.authorization,
-        ...authorizationOptions,
-        params: {
-          ...defaultOptions.endpoints?.authorization?.params,
-          ...authorizationOptions.params,
-          client_id: userOptions.clientId,
-          response_type: 'code',
-        },
-      },
-      token: {
-        ...defaultOptions.endpoints?.token,
-        ...tokenOptions,
-      },
-      userinfo: {
-        ...defaultOptions.endpoints?.userinfo,
-        ...userinfoOptions,
-      },
-    },
-    // default cookie options, manually set later if needed.
-    cookies: createCookiesOptions(userOptions.useSecureCookies),
-
-    // default jwt options, manually set later if needed.
-    jwt: {
-      ...userOptions.jwt,
-      secret: ''  // invalid secret: make sure to set it later if using JWT.
-    },
-
+    endpoints: { authorization, token, userinfo },
+    cookies,
+    jwt
   }
 }
-

@@ -305,9 +305,8 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
   }
 }
 
-
 /**
- * Merge user options with default options.
+ * Merge user provided OAuth provider options with the OAuth provider's default options.
  */
 export function mergeOAuthOptions(
   userOptions: OAuthUserConfig<any, any>,
@@ -332,6 +331,7 @@ export function mergeOAuthOptions(
 
   authorization.params = {
     ...defaultOptions.endpoints?.authorization?.params,
+    ...authorization.params,
     client_id: userOptions.clientId,
     response_type: 'code',
   }
@@ -360,6 +360,7 @@ export function mergeOAuthOptions(
 
   return {
     ...userOptions,
+    ...defaultOptions,
     id,
     client,
     onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
