@@ -21,16 +21,6 @@ type AnyProvider<T> =
  */
 interface Pages {
   /**
-   * Redirect URL after logging in.
-   */
-  loginRedirect: string
-
-  /**
-   * Redirect URL after logging out.
-   */
-  logoutRedirect: string
-
-  /**
    * Logout endpoint.
    */
   logout: string
@@ -94,8 +84,6 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     this.session = config.session
 
     this.pages = {
-      loginRedirect: config.pages?.loginRedirect ?? '/',
-      logoutRedirect: config.pages?.logoutRedirect ?? '/',
       logout: config.pages?.logout ?? '/auth/logout',
       session: config.pages?.session ?? '/auth/session',
     }
@@ -132,9 +120,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     const internalResponse = await this
       .generateInternalResponse(internalRequest)
-      .catch(error => {
-        return { error }
-      })
+      .catch(error => ({ error }))
 
     return internalResponse
   }
@@ -153,41 +139,26 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
      * 2.1 Aponia handles requests for static auth pages.
      */
     switch (url.pathname) {
-      case this.pages.session: {
+      case this.pages.session: 
         return sessionResponse
-      }
 
-      case this.pages.logout: {
-        const response = await this.session.logout(request)
-        if (!response.redirect) {
-          response.redirect = this.pages.logoutRedirect
-          response.status = 302
-        }
-        return response
-      }
+      case this.pages.logout: 
+        return this.session.logout(request)
     }
+
+    const loginHandler = this.routes.login.get(url.pathname)
+    const callbackHandler = this.routes.callback.get(url.pathname)
+
+    const providerHandler = loginHandler && loginHandler.pages.login.methods.includes(request.method)
+      ? loginHandler.login 
+      : callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)
+      ? callbackHandler.callback
+      : undefined
 
     /**
      * 2.2 A provider handles the request.
-     * Cookies may be set by the initial session response when refreshing a session.
      */
-    let providerResponse: InternalResponse = { cookies: sessionResponse.cookies }
-
-    const loginHandler = this.routes.login.get(url.pathname)
-
-    if (loginHandler && loginHandler.pages.login.methods.includes(request.method)) {
-      providerResponse = await loginHandler.login(internalRequest)
-    }
-
-    const callbackHandler = this.routes.callback.get(url.pathname)
-
-    if (callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)) {
-      providerResponse = await callbackHandler.callback(internalRequest)
-      if (providerResponse.user && !providerResponse.redirect) {
-        providerResponse.redirect = this.pages.loginRedirect
-        providerResponse.status = 302
-      }
-    }
+    const providerResponse = await providerHandler?.(internalRequest) ?? {}
 
     /**
      * 3. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
@@ -202,12 +173,19 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
     }
 
-    /**
-     * The final response has a defined `user` from the initial session response or the provider response.
-     */
-    providerResponse.user ||= sessionResponse.user
+    const cookies = sessionResponse.cookies ?? []
+    if (providerResponse.cookies) cookies.push(...providerResponse.cookies)
 
-    return providerResponse
+    const internalResponse = { 
+      ...sessionResponse,
+      ...providerResponse,
+      cookies, 
+
+      /** The final response's `user` can be from the initial session response or the provider response. */
+      user: providerResponse.user || sessionResponse.user
+    }
+
+    return internalResponse
   }
 }
 

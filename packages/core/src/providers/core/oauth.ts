@@ -22,6 +22,7 @@ interface Pages {
   callback: {
     route: string
     methods: string[]
+    redirect: string
   }
 }
 
@@ -119,7 +120,10 @@ export interface OAuthConfig<TProfile, TUser = TProfile> {
   checks: OAuthCheck[]
   pages: Pages
   endpoints: OAuthEndpoints<TProfile, TUser>
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
+  onAuth: (
+    user: TProfile,
+    context: OAuthProvider<TProfile, TUser>,
+  ) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
 /**
@@ -160,7 +164,10 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
 
   endpoints: OAuthEndpoints<TProfile, TUser>
 
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
+  onAuth: (
+    user: TProfile,
+    context: OAuthProvider<TProfile, TUser>,
+  ) => Awaitable<InternalResponse<TUser> | Nullish>
 
   constructor(options: OAuthConfig<TProfile, TUser>) {
     this.id = options.id
@@ -295,7 +302,10 @@ export class OAuthProvider<TProfile, TUser = TProfile> implements OAuthConfig<TP
 
     if (!profile) throw new Error("TODO: Handle missing profile")
 
-    const processedResponse = (await this.onAuth(profile)) || {}
+    const processedResponse = (await this.onAuth(profile, this)) || {
+      redirect: this.pages.callback.redirect,
+      status: 302,
+    }
 
     processedResponse.cookies ??= []
 
@@ -373,6 +383,7 @@ export function mergeOAuthOptions(
       callback: {
         route: userOptions.pages?.callback?.route ?? `/auth/callback/${id}`,
         methods: userOptions.pages?.callback?.methods ?? ['GET'],
+        redirect: userOptions.pages?.callback?.redirect ?? '/',
       }
     },
     endpoints: { authorization, token, userinfo },

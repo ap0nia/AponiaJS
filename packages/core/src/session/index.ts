@@ -14,22 +14,60 @@ type Awaitable<T> = T | PromiseLike<T>;
 
 type Nullish = null | undefined | void;
 
-type NewSession<TUser, TSession, TRefresh> = { 
+/**
+ * A newly created session.
+ */
+interface NewSession<TUser, TSession, TRefresh> { 
+  /**
+   * The logged in `user` for the request.
+   */
   user: TUser,
+
+  /**
+   * The access token to save in a cookie.
+   */
   accessToken: TSession,
+
+  /**
+   * The refresh token to save in a cookie.
+   */
   refreshToken?: TRefresh 
 }
 
-type TokenMaxAge = {
+interface TokenMaxAge {
   accessToken: number
   refreshToken: number
 }
 
+/**
+ * Designated pages for the session manager to handle.
+ */
+interface Pages {
+  /**
+   * Where to redirect after logging out.
+   */
+  logoutRedirect: string
+}
+
+/**
+ * @param TUser The `user` object used for authentication/authorization.
+ *
+ * @param TSession `session` data that can be directly or indirectly to identify a user.
+ * i.e. If using JWTs, the decoded JWT = session data = user data.
+ * i.e. If using a database, the decoded JWT = session data => database lookup (`getUserFromSession`) => user data.
+ *
+ * @param TRefresh `refresh` data that can be used to refresh a session.
+ */
 export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Secret used to sign the tokens.
    */
   secret: string
+
+  /**
+   * Static auth pages handled by the session manager.
+   */
+  pages: Partial<Pages>
 
   /**
    * Custom JWT options.
@@ -68,7 +106,8 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
    */
   onInvalidateSession?: (
     session: TSession,
-    refresh?: TRefresh | Nullish
+    refresh: TRefresh | Nullish,
+    context: SessionManager<TUser, TSession, TRefresh>,
   ) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
@@ -83,6 +122,8 @@ export class SessionManager<
   TUser, TSession = TUser, TRefresh = undefined
 > implements SessionConfig<TUser, TSession, TRefresh> {
   secret: string
+
+  pages: Partial<Pages>
 
   jwt: Omit<JWTOptions, 'maxAge'>
 
@@ -104,11 +145,15 @@ export class SessionManager<
 
   onInvalidateSession?: (
     session: TSession,
-    refresh?: TRefresh | Nullish
+    refresh: TRefresh | Nullish,
+    context: SessionManager<TUser, TSession, TRefresh>,
   ) => Awaitable<InternalResponse<TUser> | Nullish>
 
   constructor(config: SessionConfig<TUser, TSession, TRefresh>) {
     this.secret = config.secret;
+    this.pages = {
+      logoutRedirect: config.pages?.logoutRedirect ?? '/login',
+    }
     this.jwt = {
       ...config.jwt,
       secret: config.secret,
@@ -141,7 +186,7 @@ export class SessionManager<
 
     return { 
       /**
-       * Session from the access token.
+       * Data from the access token (presumably session data).
        */
       access,
 
@@ -191,7 +236,7 @@ export class SessionManager<
   /**
    * Handle request.
    */
-  async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser | TSession>> {
+  async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
     const response: InternalResponse<TUser> = {}
     response.cookies ??= []
 
@@ -230,7 +275,10 @@ export class SessionManager<
 
     const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    const response = (access && await this.onInvalidateSession?.(access, refresh)) || {}
+    const response = (access && await this.onInvalidateSession?.(access, refresh, this)) || {
+      status: 302,
+      redirect: this.pages.logoutRedirect,
+    }
 
     response.cookies ??= []
 
