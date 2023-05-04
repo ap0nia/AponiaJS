@@ -2,7 +2,7 @@ export * from './internal/index.js'
 export * from './internal/request.js'
 export * from './internal/response.js'
 
-export * from './session/index.js'
+export * from './session.js'
 
 export * from './providers/core/credentials.js'
 export * from './providers/core/email.js'
