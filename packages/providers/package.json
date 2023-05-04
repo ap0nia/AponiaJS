@@ -1,6 +1,6 @@
 {
   "name": "@aponia/providers",
-  "version": "0.1.20",
+  "version": "0.1.22",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -23,8 +23,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@auth/core": "^0.7.1",
-    "aponia": "*"
+    "aponia": "*",
+    "oauth4webapi": "^2.2.0"
   },
   "devDependencies": {
     "rimraf": "^5.0.0",

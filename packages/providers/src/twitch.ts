@@ -1,5 +1,4 @@
-import { OIDCProvider, mergeOIDCOptions } from '../core/oidc.js'
-import type { OIDCDefaultConfig, OIDCUserConfig } from '../core/oidc.js'
+import { OIDCProvider, mergeOIDCOptions, type OIDCDefaultConfig, type OIDCUserConfig } from "aponia"
 
 export interface TwitchProfile extends Record<string, any> {
   sub: string

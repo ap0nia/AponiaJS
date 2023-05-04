@@ -1,5 +1,4 @@
-import { OAuthDefaultConfig, OAuthProvider, mergeOAuthOptions } from "../core/oauth.js"
-import type { OAuthUserConfig } from "../core/oauth.js"
+import { OAuthProvider, mergeOAuthOptions, type OAuthDefaultConfig, type OAuthUserConfig } from "aponia"
 
 export interface GitHubEmail {
   email: string

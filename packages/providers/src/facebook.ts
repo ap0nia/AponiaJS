@@ -1,5 +1,4 @@
-import { OAuthProvider, mergeOAuthOptions } from "../core/oauth.js"
-import type { OAuthDefaultConfig, OAuthUserConfig } from "../core/oauth.js"
+import { OAuthProvider, mergeOAuthOptions, type OAuthDefaultConfig, type OAuthUserConfig } from "aponia"
 
 interface FacebookPictureData {
   url: string
