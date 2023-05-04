@@ -352,10 +352,11 @@ export function mergeOAuthOptions(
     ? userOptions.endpoints.userinfo
     : (userOptions.endpoints?.userinfo?.url ?? defaultOptions.endpoints.userinfo.url)
 
-  /**
-   * Default jwt options, manually set later if needed.
-   */
+  /** Default jwt options, manually set later if needed. */
   const jwt = { ...userOptions.jwt, secret: '' }
+
+  /** Default cookie options, manually set later if needed. */
+  const cookies = createCookiesOptions(userOptions.useSecureCookies)
 
   return {
     ...userOptions,
@@ -374,7 +375,7 @@ export function mergeOAuthOptions(
       }
     },
     endpoints: { authorization, token, userinfo },
-    cookies: createCookiesOptions(userOptions.useSecureCookies),
+    cookies,
     jwt,
   }
 }
