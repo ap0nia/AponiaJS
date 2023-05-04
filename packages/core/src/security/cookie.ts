@@ -77,7 +77,7 @@ export function createCookiesOptions(
     csrfToken: {
       // Default to __Host- for CSRF token for additional protection if using useSecureCookies
       // NB: The `__Host-` prefix is stricter than the `__Secure-` prefix.
-      name: `${useSecureCookies ? "__Host-" : ""}next-auth.csrf-token`,
+      name: `${useSecureCookies ? "__Host-" : cookiePrefix}${cookieName}.csrf-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",

@@ -7,6 +7,10 @@ import type { EmailProvider } from "../providers/core/email.js"
 import type { OAuthProvider } from "../providers/core/oauth.js"
 import type { OIDCProvider } from "../providers/core/oidc.js"
 
+type Awaitable<T> = PromiseLike<T> | T
+
+type Nullish = void | undefined | null
+
 /**
  * Any core provider.
  */
@@ -26,9 +30,31 @@ interface Pages {
   logout: string
 
   /**
-   * Endpoint to get session.
+   * Endpoint to update user.
    */
-  session: string
+  update: string
+
+  /**
+   * Endpoint to request password reset.
+   */
+  forgot: string
+
+  /**
+   * Endpoint to reset password.
+   */
+  reset: string
+
+  /**
+   * Endpoint to verify account (email).
+   */
+  verify: string
+}
+
+/**
+ * Callbacks for Aponia Auth pages.
+ */
+type Callbacks<T> = {
+  [k in keyof Pages]?: (request: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
 }
 
 /**
@@ -49,6 +75,11 @@ export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
    * Static auth pages.
    */
   pages?: Partial<Pages>
+
+  /**
+   * Callbacks to handle static auth pages.
+   */
+  callbacks?: Partial<Callbacks<TUser>>
 }
 
 /**
@@ -71,6 +102,11 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   pages: Pages
 
   /**
+   * Callbacks.
+   */
+  callbacks: Partial<Callbacks<TUser>>
+
+  /**
    * Dynamic auth routes handled by providers.
    */
   routes: {
@@ -85,8 +121,13 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     this.pages = {
       logout: config.pages?.logout ?? '/auth/logout',
-      session: config.pages?.session ?? '/auth/session',
+      update: config.pages?.update ?? '/auth/update',
+      forgot: config.pages?.forgot ?? '/auth/forgot',
+      reset: config.pages?.reset ?? '/auth/reset',
+      verify: config.pages?.verify ?? '/auth/verify',
     }
+
+    this.callbacks = config.callbacks ?? {}
 
     this.routes = {
       login: new Map(),
@@ -139,11 +180,20 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
      * 2.1 Aponia handles requests for static auth pages.
      */
     switch (url.pathname) {
-      case this.pages.session: 
-        return sessionResponse
+      case this.pages.logout:
+        return (await this.callbacks.logout?.(internalRequest)) ?? this.session.logout(request)
 
-      case this.pages.logout: 
-        return this.session.logout(request)
+      case this.pages.update:
+        return (await this.callbacks.update?.(internalRequest)) ?? {}
+
+      case this.pages.forgot:
+        return (await this.callbacks.forgot?.(internalRequest)) ?? {}
+
+      case this.pages.reset:
+        return (await this.callbacks.reset?.(internalRequest)) ?? {}
+
+      case this.pages.verify:
+        return (await this.callbacks.verify?.(internalRequest)) ?? {}
     }
 
     const loginHandler = this.routes.login.get(url.pathname)
