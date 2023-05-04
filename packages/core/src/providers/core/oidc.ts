@@ -22,6 +22,7 @@ interface Pages {
   callback: {
     route: string
     methods: string[]
+    redirect: string
   }
 }
 
@@ -120,7 +121,7 @@ export interface OIDCConfig<TProfile, TUser = TProfile> {
   checks: OIDCCheck[]
   pages: Pages
   endpoints?: Partial<OIDCEndpoints<TProfile, TUser>>
-  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish>
+  onAuth: (user: TProfile) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
 /**
@@ -216,6 +217,8 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
    * Login the user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
+    await this.initialize()
+
     if (!this.authorizationServer.authorization_endpoint) {
       throw new TypeError(`Invalid authorization endpoint. ${this.authorizationServer.authorization_endpoint}`)
     }
@@ -264,6 +267,8 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
    * Callback after the user has logged in.
    */
   async callback(request: InternalRequest): Promise<InternalResponse> {
+    await this.initialize()
+
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this)
@@ -317,7 +322,10 @@ export class OIDCProvider<TProfile, TUser = TProfile> implements OIDCConfig<TPro
 
     const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
-    const processedResponse = (await this.onAuth(profile)) || {}
+    const processedResponse = (await this.onAuth(profile)) || {
+      redirect: this.pages.callback.redirect,
+      status: 302,
+    }
 
     processedResponse.cookies ??= []
 
@@ -383,6 +391,7 @@ export function mergeOIDCOptions(
       callback: {
         route: userOptions.pages?.callback?.route ?? `/auth/callback/${id}`,
         methods: userOptions.pages?.callback?.methods ?? ['GET'],
+        redirect: userOptions.pages?.callback?.redirect ?? '/',
       }
     },
     endpoints: { authorization, token, userinfo },

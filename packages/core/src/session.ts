@@ -67,7 +67,7 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Static auth pages handled by the session manager.
    */
-  pages: Partial<Pages>
+  pages?: Partial<Pages>
 
   /**
    * Custom JWT options.

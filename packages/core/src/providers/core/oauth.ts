@@ -123,7 +123,7 @@ export interface OAuthConfig<TProfile, TUser = TProfile> {
   onAuth: (
     user: TProfile,
     context: OAuthProvider<TProfile, TUser>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish>
+  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
 /**

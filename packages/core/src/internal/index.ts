@@ -149,16 +149,14 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     const loginHandler = this.routes.login.get(url.pathname)
     const callbackHandler = this.routes.callback.get(url.pathname)
 
-    const providerHandler = loginHandler && loginHandler.pages.login.methods.includes(request.method)
-      ? loginHandler.login 
-      : callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)
-      ? callbackHandler.callback
-      : undefined
-
     /**
      * 2.2 A provider handles the request.
      */
-    const providerResponse = await providerHandler?.(internalRequest) ?? {}
+    const providerResponse = loginHandler && loginHandler.pages.login.methods.includes(request.method)
+      ? await loginHandler.login(internalRequest)
+      : callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)
+      ? await callbackHandler.callback(internalRequest)
+      : {}
 
     /**
      * 3. If the provider response has a defined `user`, i.e. they just logged in, then create a new session.
