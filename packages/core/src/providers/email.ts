@@ -40,16 +40,10 @@ export class EmailProvider<T> {
     }
   }
 
-  /**
-   * Credentials doesn't use JWT.
-   */
   setJwtOptions() {
     return this
   }
 
-  /**
-   * Credentials doesn't use cookies.
-   */
   setCookiesOptions() {
     return this
   }

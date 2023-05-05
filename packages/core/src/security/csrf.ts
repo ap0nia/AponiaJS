@@ -11,7 +11,7 @@ export async function createHash(message: string) {
 }
 
 /** 
- * Web compatible method to create a random string of a given length
+ * Web compatible method to create a random string of a given length.
  */
 export function randomString(size: number = 32) {
   const i2hex = (i: number) => ("0" + i.toString(16)).slice(-2)

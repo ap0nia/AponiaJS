@@ -58,7 +58,6 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
   constructor(options: OAuthConfig<TProfile, TUser>) {
     this.config = options
 
-    // OAuth doesn't use discovery for authorization server, only OIDC.
     this.authorizationServer = {
       issuer: 'auth.js',
       authorization_endpoint: options.endpoints.authorization.url,
@@ -77,9 +76,6 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
     return this
   }
 
-  /**
-   * Login the user.
-   */
   async login(request: InternalRequest): Promise<InternalResponse> {
     const url = new URL(this.config.endpoints.authorization.url)
 
@@ -119,9 +115,6 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
     return { status: 302, redirect: url.toString(), cookies }
   }
 
-  /**
-   * Callback after the user has logged in.
-   */
   async callback(request: InternalRequest): Promise<InternalResponse> {
     const cookies: Cookie[] = []
 

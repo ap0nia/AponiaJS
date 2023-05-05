@@ -200,9 +200,6 @@ export class OIDCProvider<TProfile, TUser = TProfile> {
   }
 }
 
-/**
- * Merge user provided OIDC provider options with the OIDC provider's default options.
- */
 export function mergeOIDCOptions(
   userOptions: OIDCUserConfig<any, any>,
   defaultOptions: OIDCDefaultConfig<any>,

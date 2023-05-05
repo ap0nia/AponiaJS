@@ -5,22 +5,12 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
 const noop = () => {}
 
 export interface CredentialsConfig<T>  {
-  /**
-   * Handle the user logging in.
-   */
   onAuth: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
-
-  /**
-   * Pages.
-   */
   pages: ProviderPages
 }
 
 export interface CredentialsUserConfig<T> extends DeepPartial<CredentialsConfig<T>> {}
 
-/**
- * Credentials provider (first-party only).
- */
 export class CredentialsProvider<T> {
   id = 'credentials' as const
 
@@ -43,30 +33,18 @@ export class CredentialsProvider<T> {
     }
   }
 
-  /**
-   * Credentials doesn't use JWT.
-   */
   setJwtOptions() {
     return this
   }
 
-  /**
-   * Credentials doesn't use cookies.
-   */
   setCookiesOptions() {
     return this
   }
 
-  /**
-   * Login user.
-   */
   async login(request: InternalRequest): Promise<InternalResponse> {
     return (await this.config.onAuth(request)) ?? {}
   }
 
-  /**
-   * Login user.
-   */
   async callback(request: InternalRequest): Promise<InternalResponse> {
     return (await this.config.onAuth(request)) ?? {}
   }

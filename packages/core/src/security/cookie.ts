@@ -1,15 +1,10 @@
 import type { CookieSerializeOptions } from "cookie"
 
-/**
- * Internally generated cookies.
- * @internal
- */
 export interface Cookie {
   name: string
   value: string
   options?: CookieSerializeOptions
 }
-
 
 export interface CookieOption {
   name: string
@@ -27,9 +22,11 @@ export interface CookiesOptions {
   refreshToken: CookieOption
 }
 
-export const defaultCookieName = 'aponia-auth'
+const defaultCookieName = 'aponia-auth'
 
-export const defaultSecurePrefix = '__Secure-'
+const defaultSecurePrefix = '__Secure-'
+
+const fifteenMinutesInSeconds = 60 * 15
 
 export function createCookiesOptions(
   useSecureCookies = false,
@@ -92,7 +89,7 @@ export function createCookiesOptions(
         sameSite: "lax",
         path: "/",
         secure: useSecureCookies,
-        maxAge: 60 * 15, // 15 minutes in seconds
+        maxAge: fifteenMinutesInSeconds,
       },
     },
     state: {
@@ -102,7 +99,7 @@ export function createCookiesOptions(
         sameSite: "lax",
         path: "/",
         secure: useSecureCookies,
-        maxAge: 60 * 15, // 15 minutes in seconds
+        maxAge: fifteenMinutesInSeconds,
       },
     },
     nonce: {
@@ -112,6 +109,7 @@ export function createCookiesOptions(
         sameSite: "lax",
         path: "/",
         secure: useSecureCookies,
+        maxAge: fifteenMinutesInSeconds,
       },
     },
   }
