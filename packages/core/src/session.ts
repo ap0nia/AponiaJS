@@ -1,36 +1,27 @@
 import { parse } from "cookie";
 import { encode, decode } from "./security/jwt.js";
 import { createCookiesOptions } from "./security/cookie.js";
-import type { JWTOptions, JWTEncodeParams, JWTDecodeParams } from "./security/jwt.js";
+import type { JWTOptions } from "./security/jwt.js";
 import type { Cookie, CookiesOptions } from "./security/cookie.js";
 import type { InternalRequest } from "./internal/request.js";
 import type { InternalResponse } from "./internal/response.js";
+import type { Awaitable, DeepPartial, Nullish } from './types.js'
 
-const DefaultAccessTokenMaxAge = 60 * 60
+const hourInSeconds = 60 * 60
 
-const DefaultRefreshTokenMaxAge = 60 * 60 * 24 * 7
+const weekInSeconds = 7 * 24 * hourInSeconds
 
-type Awaitable<T> = T | PromiseLike<T>;
+const DefaultAccessTokenMaxAge = hourInSeconds
 
-type Nullish = null | undefined | void;
+const DefaultRefreshTokenMaxAge = weekInSeconds
 
-/**
- * A newly created session.
- */
+function asPromise<T>(value: Awaitable<T>): Promise<T> {
+  return value instanceof Promise ? value : Promise.resolve(value)
+}
+
 interface NewSession<TUser, TSession, TRefresh> { 
-  /**
-   * The logged in `user` for the request.
-   */
   user: TUser,
-
-  /**
-   * The access token to save in a cookie.
-   */
   accessToken: TSession,
-
-  /**
-   * The refresh token to save in a cookie.
-   */
   refreshToken?: TRefresh 
 }
 
@@ -39,107 +30,32 @@ interface TokenMaxAge {
   refreshToken: number
 }
 
-/**
- * Designated pages for the session manager to handle.
- */
 interface Pages {
-  /**
-   * Where to redirect after logging out.
-   */
   logoutRedirect: string
 }
 
-/**
- * @param TUser The `user` object used for authentication/authorization.
- *
- * @param TSession `session` data that can be directly or indirectly to identify a user.
- * i.e. If using JWTs, the decoded JWT = session data = user data.
- * i.e. If using a database, the decoded JWT = session data => database lookup (`getUserFromSession`) => user data.
- *
- * @param TRefresh `refresh` data that can be used to refresh a session.
- */
+export interface SessionUserConfig<TUser, TSession = TUser, TRefresh = undefined> extends 
+  DeepPartial<Omit<SessionConfig<TUser, TSession, TRefresh>, 'secret'>>,
+  Required<Pick<SessionConfig<TUser, TSession, TRefresh>, 'secret'>> {}
+
 export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
-  /**
-   * Secret used to sign the tokens.
-   */
-  secret: string
-
-  /**
-   * Static auth pages handled by the session manager.
-   */
-  pages?: Partial<Pages>
-
-  /**
-   * Custom JWT options.
-   */
-  jwt?: Omit<JWTOptions, 'maxAge'>
-
-  /**
-   * Max age of the access and refresh tokens.
-   */
-  maxAge?: Partial<TokenMaxAge>
-
-  /**
-   * Cookie options for the access and refresh tokens.
-   */
-  useSecureCookies?: boolean
-
-  /**
-   * Create a new session from a user.
-   */
-  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
-
-  /**
-   * Get a user from a session.
-   */
-  getUserFromSession?: (session: TSession) => Awaitable<TUser | Nullish>;
-
-  /**
-   * Refresh a session from a refresh token.
-   */
-  handleRefresh: (
-    tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
-  ) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
-
-  /**
-   * Invalidate a session.
-   */
-  onInvalidateSession?: (
-    session: TSession,
-    refresh: TRefresh | Nullish,
-    context: SessionManager<TUser, TSession, TRefresh>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish>
-}
-
-/**
- * Ensure a possibly async value is a `Promise`.
- */
-function asPromise<T>(value: Awaitable<T>): Promise<T> {
-  return value instanceof Promise ? value : Promise.resolve(value)
-}
-
-export class SessionManager<
-  TUser, TSession = TUser, TRefresh = undefined
-> implements SessionConfig<TUser, TSession, TRefresh> {
   secret: string
 
   pages: Partial<Pages>
 
-  jwt: Omit<JWTOptions, 'maxAge'>
-
-  encode: (params: JWTEncodeParams) => Awaitable<string>
-
-  decode: <T>(params: JWTDecodeParams) => Awaitable<T | Nullish>
-
-  maxAge: TokenMaxAge
+  jwt: Required<Omit<JWTOptions, 'maxAge'>>
 
   cookies: CookiesOptions
 
-  createSession: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
+  maxAge: Partial<TokenMaxAge>
+
+  useSecureCookies?: boolean
+
+  createSession?: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
 
   getUserFromSession: (session: TSession) => Awaitable<TUser | Nullish>;
 
-  handleRefresh: (
+  handleRefresh?: (
     tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
   ) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
 
@@ -148,53 +64,48 @@ export class SessionManager<
     refresh: TRefresh | Nullish,
     context: SessionManager<TUser, TSession, TRefresh>,
   ) => Awaitable<InternalResponse<TUser> | Nullish>
+}
 
-  constructor(config: SessionConfig<TUser, TSession, TRefresh>) {
-    this.secret = config.secret;
-    this.pages = {
-      logoutRedirect: config.pages?.logoutRedirect ?? '/login',
-    }
-    this.jwt = {
-      ...config.jwt,
+export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
+  config: SessionConfig<TUser, TSession, TRefresh>
+
+  constructor(config: SessionUserConfig<TUser, TSession, TRefresh>) {
+    this.config = {
       secret: config.secret,
+      pages: config.pages ?? {},
+      jwt: {
+        ...config.jwt,
+        secret: config.secret,
+        decode: config.jwt?.decode ?? decode,
+        encode: config.jwt?.encode ?? encode,
+      },
+      cookies: createCookiesOptions(config.useSecureCookies),
+      maxAge: { 
+        accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
+        refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,
+      },
+      createSession: config.createSession,
+      getUserFromSession: config.getUserFromSession ?? ((session: TSession) => session as any),
+      handleRefresh: config.handleRefresh,
+      onInvalidateSession: config.onInvalidateSession,
+      useSecureCookies: config.useSecureCookies,
     }
-    this.maxAge = { 
-      accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
-      refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,
-    }
-    this.encode = config.jwt?.encode ?? encode
-    this.decode = config.jwt?.decode ?? decode
-    this.cookies = createCookiesOptions(config.useSecureCookies)
-    this.createSession = config.createSession;
-    this.getUserFromSession = config.getUserFromSession ?? ((session: TSession) => session as any);
-    this.handleRefresh = config.handleRefresh;
-    this.onInvalidateSession = config.onInvalidateSession;
   }
 
   async decodeTokens(tokens: { accessToken?: string, refreshToken?: string }) {
     const access = await asPromise(
-      this.decode<TSession>({ secret: this.secret, token: tokens.accessToken })
+      this.config.jwt.decode<TSession>({ secret: this.config.secret, token: tokens.accessToken })
     ).catch(e => {
       console.log('Error decoding access token', e)
     })
 
     const refresh = await asPromise(
-      this.decode<TRefresh>({ secret: this.secret, token: tokens.refreshToken })
+      this.config.jwt.decode<TRefresh>({ secret: this.config.secret, token: tokens.refreshToken })
     ).catch(e => {
       console.log('Error decoding access token', e)
     })
 
-    return { 
-      /**
-       * Data from the access token (presumably session data).
-       */
-      access,
-
-      /**
-       * Data from the refresh token.
-       */
-      refresh 
-    }
+    return { access, refresh }
   }
 
   async createCookies(newSession: NewSession<TUser, TSession, TRefresh>): Promise<Cookie[]> {
@@ -202,30 +113,30 @@ export class SessionManager<
 
     if (newSession?.accessToken) {
       cookies.push({
-        name: this.cookies.accessToken.name,
-        value: await this.encode({ 
-          secret: this.secret,
-          maxAge: this.maxAge.accessToken,
+        name: this.config.cookies.accessToken.name,
+        value: await this.config.jwt.encode({ 
+          secret: this.config.secret,
+          maxAge: this.config.maxAge.accessToken,
           token: newSession.accessToken
         }),
         options: {
-          ...this.cookies.accessToken.options,
-          maxAge: this.maxAge.accessToken,
+          ...this.config.cookies.accessToken.options,
+          maxAge: this.config.maxAge.accessToken,
         }
       })
     }
 
     if (newSession?.refreshToken) {
       cookies.push({
-        name: this.cookies.refreshToken.name,
-        value: await this.encode({
-          secret: this.secret,
-          maxAge: this.maxAge.refreshToken,
+        name: this.config.cookies.refreshToken.name,
+        value: await this.config.jwt.encode({
+          secret: this.config.secret,
+          maxAge: this.config.maxAge.refreshToken,
           token: newSession.refreshToken
         }),
         options: {
-          ...this.cookies.refreshToken.options,
-          maxAge: this.maxAge.refreshToken,
+          ...this.config.cookies.refreshToken.options,
+          maxAge: this.config.maxAge.refreshToken,
         }
       })
     }
@@ -233,26 +144,19 @@ export class SessionManager<
     return cookies
   }
 
-  /**
-   * Handle request.
-   */
   async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
     const response: InternalResponse<TUser> = {}
     response.cookies ??= []
 
-    const accessToken = request.cookies[this.cookies.accessToken.name]
+    const accessToken = request.cookies[this.config.cookies.accessToken.name]
 
-    const refreshToken = request.cookies[this.cookies.refreshToken.name]
+    const refreshToken = request.cookies[this.config.cookies.refreshToken.name]
 
     const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    response.user = access ? await this.getUserFromSession(access) : null
+    response.user = access ? await this.config.getUserFromSession(access) : null
 
-    /**
-     * The user-defined function decides when to create new tokens.
-     * e.g. When the access token is expired, but the refresh token is not.
-     */
-    const sessionTokens = await this.handleRefresh({ accessToken: access, refreshToken: refresh })
+    const sessionTokens = await this.config.handleRefresh?.({ accessToken: access, refreshToken: refresh })
 
     if (sessionTokens) {
       response.cookies.push(...await this.createCookies(sessionTokens))
@@ -263,35 +167,32 @@ export class SessionManager<
     return response
   }
 
-  /**
-   * Logout the user.
-   */
   async logout(request: Request): Promise<InternalResponse<TUser>> {
     const cookies = parse(request.headers.get("cookie") ?? "")
 
-    const accessToken = cookies[this.cookies.accessToken.name]
+    const accessToken = cookies[this.config.cookies.accessToken.name]
 
-    const refreshToken = cookies[this.cookies.refreshToken.name]
+    const refreshToken = cookies[this.config.cookies.refreshToken.name]
 
     const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    const response = (access && await this.onInvalidateSession?.(access, refresh, this)) || {
+    const response = (access && await this.config.onInvalidateSession?.(access, refresh, this)) || {
       status: 302,
-      redirect: this.pages.logoutRedirect,
+      redirect: this.config.pages.logoutRedirect,
     }
 
     response.cookies ??= []
 
     response.cookies.push(
       {
-        name: this.cookies.accessToken.name,
+        name: this.config.cookies.accessToken.name,
         value: "",
-        options: { ...this.cookies.accessToken.options, maxAge: 0, }
+        options: { ...this.config.cookies.accessToken.options, maxAge: 0, }
       }, 
       {
-        name: this.cookies.refreshToken.name,
+        name: this.config.cookies.refreshToken.name,
         value: "",
-        options: { ...this.cookies.refreshToken.options, maxAge: 0, }
+        options: { ...this.config.cookies.refreshToken.options, maxAge: 0, }
       }
     )
 
@@ -300,7 +201,7 @@ export class SessionManager<
 }
 
 export function AponiaSession<TUser, TSession = TUser, TRefresh = undefined>(
-  config: SessionConfig<TUser, TSession, TRefresh>
+  config: SessionUserConfig<TUser, TSession, TRefresh>
 ): SessionManager<TUser, TSession, TRefresh> {
   return new SessionManager(config)
 }

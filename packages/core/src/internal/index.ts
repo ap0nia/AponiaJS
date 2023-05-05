@@ -14,30 +14,75 @@ type AnyProvider<T> =
   | CredentialsProvider<T> 
   | EmailProvider<T>
 
-interface Pages {
+/**
+ * Static auth pages handled by the framework.
+ */
+interface AuthPages {
+  /**
+   * Log a user out.
+   */
   logout: PageEndpoint
+
+  /**
+   * Update a user's info.
+   */
   update: PageEndpoint
+
+  /**
+   * Submit a "forgot password" request.
+   */
   forgot: PageEndpoint
+
+  /**
+   * Reset a user's password, i.e. after receiving a "forgot password" response.
+   */
   reset: PageEndpoint
-  verify: PageEndpoint
 }
 
-type Callbacks<T> = {
-  [k in keyof Pages]?: (request: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
+/**
+ * Callbacks for static auth pages.
+ */
+type AuthCallbacks<T> = {
+  [k in keyof AuthPages]?: (request: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
 }
 
+/**
+ * Auth configuration.
+ */
 export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined> {
-  providers: AnyProvider<TUser>[]
+  /**
+   * Session manager. Handles session creation, validation / decoding, and destruction.
+   */
   session: SessionManager<TUser, TSession, TRefresh>
-  pages?: Partial<Pages>
-  callbacks?: Partial<Callbacks<TUser>>
+
+  /**
+   * Providers to use for authentication.
+   */
+  providers: AnyProvider<TUser>[]
+
+  /**
+   * Static auth pages.
+   */
+  pages?: Partial<AuthPages>
+
+  /**
+   * Callbacks for static auth pages.
+   */
+  callbacks?: Partial<AuthCallbacks<TUser>>
 }
 
+/**
+ * Auth framework.
+ */
 export class Auth<TUser, TSession, TRefresh = undefined> {
   session: SessionManager<TUser, TSession, TRefresh>
+
   providers: AnyProvider<TUser>[]
-  pages: Pages
-  callbacks: Partial<Callbacks<TUser>>
+
+  pages: AuthPages
+
+  callbacks: Partial<AuthCallbacks<TUser>>
+
   routes: {
     login: Map<string, AnyProvider<TUser>>
     callback: Map<string, AnyProvider<TUser>>
@@ -53,7 +98,6 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       update: config.pages?.update ?? { route: '/auth/update', methods: ['POST'] },
       forgot: config.pages?.forgot ?? { route: '/auth/forgot', methods: ['POST'] },
       reset: config.pages?.reset ?? { route: '/auth/reset', methods: ['POST'] },
-      verify: config.pages?.verify ?? { route: '/auth/verify', methods: ['POST'] },
     }
 
     this.callbacks = config.callbacks ?? {}
@@ -65,14 +109,19 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
     this.providers.forEach(provider => {
       provider
-        .setJwtOptions(this.session.jwt)
-        .setCookiesOptions(this.session.cookies)
+        .setJwtOptions(this.session.config.jwt)
+        .setCookiesOptions(this.session.config.cookies)
 
       this.routes.login.set(provider.config.pages.login.route, provider)
       this.routes.callback.set(provider.config.pages.callback.route, provider)
     })
   }
 
+  /**
+   * Handle an incoming request.
+   * Assumes a `Request` object according to web standards.
+   * Convert framework implementation to one if it doesn't conform, i.e. ExpressJS.
+   */
   async handle(request: Request): Promise<InternalResponse> {
     const internalRequest = await toInternalRequest(request)
 
@@ -83,43 +132,37 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     return internalResponse
   }
 
+  /**
+   * Generate an `InternalResponse` from an `InternalRequest`.
+   */
   async generateInternalResponse(internalRequest: InternalRequest): Promise<InternalResponse> {
     const { url, request } = internalRequest
 
     const sessionResponse = await this.session.handleRequest(internalRequest)
 
-    if (url.pathname === this.pages.logout.route && this.pages.logout.methods.includes(request.method)) {
+    if (url.pathname === this.pages.logout.route && this.pages.logout.methods.includes(request.method))
       return await this.callbacks.logout?.(internalRequest) ?? this.session.logout(request)
-    }
 
-    if (url.pathname === this.pages.update.route && this.pages.update.methods.includes(request.method)) {
+    if (url.pathname === this.pages.update.route && this.pages.update.methods.includes(request.method))
       return await this.callbacks.update?.(internalRequest) ?? {}
-    }
 
-    if (url.pathname === this.pages.forgot.route && this.pages.forgot.methods.includes(request.method)) {
+    if (url.pathname === this.pages.forgot.route && this.pages.forgot.methods.includes(request.method))
       return await this.callbacks.forgot?.(internalRequest) ?? {}
-    }
 
-    if (url.pathname === this.pages.reset.route && this.pages.reset.methods.includes(request.method)) {
+    if (url.pathname === this.pages.reset.route && this.pages.reset.methods.includes(request.method))
       return await this.callbacks.reset?.(internalRequest) ?? {}
-    }
-
-    if (url.pathname === this.pages.verify.route && this.pages.verify.methods.includes(request.method)) {
-      return await this.callbacks.verify?.(internalRequest) ?? {}
-    }
 
     const loginHandler = this.routes.login.get(url.pathname)
     const callbackHandler = this.routes.callback.get(url.pathname)
 
-    const providerResponse = 
-        loginHandler && loginHandler.config.pages.login.methods.includes(request.method)
+    const providerResponse = loginHandler && loginHandler.config.pages.login.methods.includes(request.method)
       ? await loginHandler.login(internalRequest)
       : callbackHandler && callbackHandler.config.pages.callback.methods.includes(request.method)
       ? await callbackHandler.callback(internalRequest)
       : {}
 
     if (providerResponse.user) {
-      const sessionTokens = await this.session.createSession(providerResponse.user)
+      const sessionTokens = await this.session.config.createSession?.(providerResponse.user)
       providerResponse.user = sessionTokens?.user
 
       if (sessionTokens) {
@@ -134,7 +177,7 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     const internalResponse = { 
       ...sessionResponse,
       ...providerResponse,
-      cookies, 
+      cookies,
       user: providerResponse.user || sessionResponse.user
     }
 
@@ -142,6 +185,9 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   }
 }
 
+/**
+ * Create an auth instance.
+ */
 export function AponiaAuth<TUser, TSession = TUser, TRefresh = undefined>(
   config: AuthConfig<TUser, TSession, TRefresh>
 ) {
