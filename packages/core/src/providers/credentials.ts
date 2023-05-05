@@ -2,15 +2,22 @@ import type { InternalRequest } from "../internal/request.js";
 import type { InternalResponse } from "../internal/response.js";
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
-const noop = () => {}
-
+/**
+ * Internal configuration for the credentials provider.
+ */
 export interface CredentialsConfig<T>  {
-  onAuth: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
+  onAuth?: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
   pages: ProviderPages
 }
 
+/**
+ * User configuration for the credentials provider.
+ */
 export interface CredentialsUserConfig<T> extends DeepPartial<CredentialsConfig<T>> {}
 
+/**
+ * Credentials provider.
+ */
 export class CredentialsProvider<T> {
   id = 'credentials' as const
 
@@ -18,7 +25,7 @@ export class CredentialsProvider<T> {
 
   constructor(config: CredentialsUserConfig<T>) {
     this.config = {
-      onAuth: config.onAuth ?? noop,
+      ...config,
       pages: {
         login: {
           route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
@@ -42,14 +49,17 @@ export class CredentialsProvider<T> {
   }
 
   async login(request: InternalRequest): Promise<InternalResponse> {
-    return (await this.config.onAuth(request)) ?? {}
+    return (await this.config.onAuth?.(request)) ?? {}
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    return (await this.config.onAuth(request)) ?? {}
+    return (await this.config.onAuth?.(request)) ?? {}
   }
 }
 
+/**
+ * Create a credentials provider.
+ */
 export function Credentials<TUser>(config: CredentialsUserConfig<TUser>) {
   return new CredentialsProvider<TUser>(config)
 }

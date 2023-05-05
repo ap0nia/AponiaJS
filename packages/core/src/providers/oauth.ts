@@ -18,18 +18,9 @@ interface Endpoint<TContext = any, TResponse = any> {
   conform?: (response: Response) => Awaitable<Response | Nullish>
 }
 
-export interface OAuthUserConfig<TProfile, TUser = TProfile> extends 
-  DeepPartial<Omit<OAuthConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> 
-{
-  clientId: string
-  clientSecret: string
-  useSecureCookies?: boolean
-}
-
-export interface OAuthDefaultConfig<TProfile> extends 
-  Pick<OAuthConfig<TProfile>, 'id' | 'endpoints'>,
-  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints'> {}
-
+/**
+ * Internal OAuth configuration.
+ */
 export interface OAuthConfig<TProfile, TUser = TProfile> {
   id: string
   clientId: string
@@ -50,6 +41,27 @@ export interface OAuthConfig<TProfile, TUser = TProfile> {
   ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
+/**
+ * OAuth user configuration.
+ */
+export interface OAuthUserConfig<TProfile, TUser = TProfile> extends 
+  DeepPartial<Omit<OAuthConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> 
+{
+  clientId: string
+  clientSecret: string
+  useSecureCookies?: boolean
+}
+
+/**
+ * Pre-defined OAuth default configuration.
+ */
+export interface OAuthDefaultConfig<TProfile> extends 
+  Pick<OAuthConfig<TProfile>, 'id' | 'endpoints'>,
+  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints'> {}
+
+/**
+ * OAuth provider.
+ */
 export class OAuthProvider<TProfile, TUser = TProfile> {
   config: OAuthConfig<TProfile, TUser>
 
@@ -76,6 +88,9 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
     return this
   }
 
+  /**
+   * Handle OAuth login request.
+   */
   async login(request: InternalRequest): Promise<InternalResponse> {
     const url = new URL(this.config.endpoints.authorization.url)
 
@@ -115,6 +130,9 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
     return { status: 302, redirect: url.toString(), cookies }
   }
 
+  /**
+   * Handle OAuth callback request.
+   */
   async callback(request: InternalRequest): Promise<InternalResponse> {
     const cookies: Cookie[] = []
 
@@ -184,6 +202,9 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
   }
 }
 
+/**
+ * Merge user and pre-defined default OAuth options.
+ */
 export function mergeOAuthOptions(
   userOptions: OAuthUserConfig<any, any>,
   defaultOptions: OAuthDefaultConfig<any>,

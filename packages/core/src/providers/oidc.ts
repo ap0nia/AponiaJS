@@ -17,6 +17,9 @@ interface Endpoint<TContext = any, TResponse = any> {
   conform?: (response: Response) => Awaitable<Response | Nullish>
 }
 
+/**
+ * Internal OIDC configuration.
+ */
 export interface OIDCConfig<TProfile, TUser = TProfile> {
   id: string
   issuer: string
@@ -38,10 +41,9 @@ export interface OIDCConfig<TProfile, TUser = TProfile> {
   ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
-export interface OIDCDefaultConfig<TProfile> extends 
-  Pick<OIDCConfig<TProfile>, 'id' | 'issuer'>,
-  Omit<OIDCUserConfig<TProfile>, 'id' | 'issuer'> {}
-
+/**
+ * OIDC user configuration.
+ */
 export interface OIDCUserConfig<TProfile, TUser = TProfile> extends 
   DeepPartial<Omit<OIDCConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> {
   clientId: string
@@ -49,6 +51,16 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile> extends
   useSecureCookies?: boolean
 }
 
+/**
+ * Pre-defined OIDC default configuration.
+ */
+export interface OIDCDefaultConfig<TProfile> extends 
+  Pick<OIDCConfig<TProfile>, 'id' | 'issuer'>,
+  Omit<OIDCUserConfig<TProfile>, 'id' | 'issuer'> {}
+
+/**
+ * OIDC provider.
+ */
 export class OIDCProvider<TProfile, TUser = TProfile> {
   config: OIDCConfig<TProfile, TUser>
 
@@ -69,6 +81,9 @@ export class OIDCProvider<TProfile, TUser = TProfile> {
     return this
   }
 
+  /**
+   * Dynamically initialize OIDC authorization server.
+   */
   async initialize() {
     const issuer = new URL(this.authorizationServer.issuer)
 
@@ -85,6 +100,9 @@ export class OIDCProvider<TProfile, TUser = TProfile> {
     this.authorizationServer = authorizationServer
   }
 
+  /**
+   * Handle OAuth login request.
+   */
   async login(request: InternalRequest): Promise<InternalResponse> {
     await this.initialize()
 
@@ -132,6 +150,9 @@ export class OIDCProvider<TProfile, TUser = TProfile> {
     return { status: 302, redirect: url.toString(), cookies }
   }
 
+  /**
+   * Handle OAuth callback request.
+   */
   async callback(request: InternalRequest): Promise<InternalResponse> {
     await this.initialize()
 
@@ -200,6 +221,9 @@ export class OIDCProvider<TProfile, TUser = TProfile> {
   }
 }
 
+/**
+ * Merges the user options with the pre-defined default options.
+ */
 export function mergeOIDCOptions(
   userOptions: OIDCUserConfig<any, any>,
   defaultOptions: OIDCDefaultConfig<any>,

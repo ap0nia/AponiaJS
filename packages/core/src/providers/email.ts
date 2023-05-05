@@ -3,18 +3,25 @@ import type { InternalRequest } from "../internal/request.js";
 import type { InternalResponse } from "../internal/response.js";
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
-const noop = () => {}
-
+/**
+ * Internal configuration for the email provider.
+ */
 export interface EmailConfig<T> {
   theme: any
-  getEmail: (request: InternalRequest) => Awaitable<string | Nullish>
-  onAuth: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
-  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
   pages: ProviderPages
+  getEmail?: (request: InternalRequest) => Awaitable<string | Nullish>
+  onAuth?: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
+  onVerify?: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
 }
 
+/**
+ * User configuration for the email provider.
+ */
 export interface EmailUserConfig<T> extends DeepPartial<EmailConfig<T>> {}
 
+/**
+ * Email provider.
+ */
 export class EmailProvider<T> {
   id = 'email' as const
 
@@ -22,9 +29,7 @@ export class EmailProvider<T> {
 
   constructor(config: EmailUserConfig<T>) {
     this.config = {
-      getEmail: config.getEmail ?? noop,
-      onAuth: config.onAuth ?? noop,
-      onVerify: config.onVerify ?? noop,
+      ...config,
       theme: config.theme,
       pages: {
         login: {
@@ -49,7 +54,7 @@ export class EmailProvider<T> {
   }
 
   async login(request: InternalRequest): Promise<InternalResponse> {
-    const email = await this.config.getEmail(request)
+    const email = await this.config.getEmail?.(request)
 
     // TODO: error
     if (!email) {
@@ -109,16 +114,19 @@ export class EmailProvider<T> {
     </body>
     `
 
-    return await (this.config.onAuth(request, { html, email, token, provider: this })) ?? {}
+    return await (this.config.onAuth?.(request, { html, email, token, provider: this })) ?? {}
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
     const token = request.url.searchParams.get('token')
     const email = request.url.searchParams.get('email')
-    return await (this.config.onVerify(request, { token, email })) ?? {}
+    return await (this.config.onVerify?.(request, { token, email })) ?? {}
   }
 }
 
+/**
+ * Create a new email provider.
+ */
 export function Email<T>(config: EmailUserConfig<T>) {
   return new EmailProvider<T>(config)
 }

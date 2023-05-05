@@ -15,6 +15,9 @@ const DefaultAccessTokenMaxAge = hourInSeconds
 
 const DefaultRefreshTokenMaxAge = weekInSeconds
 
+/**
+ * Ensure a possibly async value is a `Promise`.
+ */
 function asPromise<T>(value: Awaitable<T>): Promise<T> {
   return value instanceof Promise ? value : Promise.resolve(value)
 }
@@ -34,10 +37,9 @@ interface Pages {
   logoutRedirect: string
 }
 
-export interface SessionUserConfig<TUser, TSession = TUser, TRefresh = undefined> extends 
-  DeepPartial<Omit<SessionConfig<TUser, TSession, TRefresh>, 'secret'>>,
-  Required<Pick<SessionConfig<TUser, TSession, TRefresh>, 'secret'>> {}
-
+/**
+ * Internal session configuration.
+ */
 export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   secret: string
 
@@ -66,11 +68,22 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   ) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
+/**
+ * Session user configuration.
+ */
+export interface SessionUserConfig<TUser, TSession = TUser, TRefresh = undefined> extends 
+  DeepPartial<Omit<SessionConfig<TUser, TSession, TRefresh>, 'secret'>>,
+  Required<Pick<SessionConfig<TUser, TSession, TRefresh>, 'secret'>> {}
+
+/**
+ * Session manager.
+ */
 export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   config: SessionConfig<TUser, TSession, TRefresh>
 
   constructor(config: SessionUserConfig<TUser, TSession, TRefresh>) {
     this.config = {
+      ...config,
       secret: config.secret,
       pages: config.pages ?? {},
       jwt: {
@@ -84,11 +97,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
         accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
         refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,
       },
-      createSession: config.createSession,
       getUserFromSession: config.getUserFromSession ?? ((session: TSession) => session as any),
-      handleRefresh: config.handleRefresh,
-      onInvalidateSession: config.onInvalidateSession,
-      useSecureCookies: config.useSecureCookies,
     }
   }
 
@@ -200,6 +209,9 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   }
 }
 
+/**
+ * Create a new session manager.
+ */
 export function AponiaSession<TUser, TSession = TUser, TRefresh = undefined>(
   config: SessionUserConfig<TUser, TSession, TRefresh>
 ): SessionManager<TUser, TSession, TRefresh> {
