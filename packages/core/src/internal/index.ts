@@ -6,10 +6,7 @@ import type { CredentialsProvider } from "../providers/credentials.js"
 import type { EmailProvider } from "../providers/email.js"
 import type { OAuthProvider } from "../providers/oauth.js"
 import type { OIDCProvider } from "../providers/oidc.js"
-
-type Awaitable<T> = PromiseLike<T> | T
-
-type Nullish = void | undefined | null
+import type { Awaitable, Nullish } from "../types.js"
 
 /**
  * Any core provider.
@@ -152,8 +149,8 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
         .setJwtOptions(this.session.jwt)
         .setCookiesOptions(this.session.cookies)
 
-      this.routes.login.set(provider.pages.login.route, provider)
-      this.routes.callback.set(provider.pages.callback.route, provider)
+      this.routes.login.set(provider.config.pages.login.route, provider)
+      this.routes.callback.set(provider.config.pages.callback.route, provider)
     })
   }
 
@@ -184,36 +181,24 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     /**
      * 2.1 Aponia handles requests for static auth pages.
      */
-    switch (url.pathname) {
-      case this.pages.logout.route:
-        return await (
-          this.pages.logout.methods.includes(request.method) && 
-          this.callbacks.logout?.(internalRequest)
-        ) || this.session.logout(request)
+    if (url.pathname === this.pages.logout.route && this.pages.logout.methods.includes(request.method)) {
+      return await this.callbacks.logout?.(internalRequest) ?? this.session.logout(request)
+    }
 
-      case this.pages.update.route:
-        return await (
-          this.pages.update.methods.includes(request.method) &&
-          this.callbacks.update?.(internalRequest)
-        ) || {}
+    if (url.pathname === this.pages.update.route && this.pages.update.methods.includes(request.method)) {
+      return await this.callbacks.update?.(internalRequest) ?? {}
+    }
 
-      case this.pages.forgot.route:
-        return await (
-          this.pages.forgot.methods.includes(request.method) &&
-          this.callbacks.forgot?.(internalRequest)
-        ) || {}
+    if (url.pathname === this.pages.forgot.route && this.pages.forgot.methods.includes(request.method)) {
+      return await this.callbacks.forgot?.(internalRequest) ?? {}
+    }
 
-      case this.pages.reset.route:
-        return await (
-          this.pages.reset.methods.includes(request.method) &&
-          this.callbacks.reset?.(internalRequest)
-        ) || {}
+    if (url.pathname === this.pages.reset.route && this.pages.reset.methods.includes(request.method)) {
+      return await this.callbacks.reset?.(internalRequest) ?? {}
+    }
 
-      case this.pages.verify.route:
-        return await (
-          this.pages.verify.methods.includes(request.method) &&
-          this.callbacks.verify?.(internalRequest)
-        ) || {}
+    if (url.pathname === this.pages.verify.route && this.pages.verify.methods.includes(request.method)) {
+      return await this.callbacks.verify?.(internalRequest) ?? {}
     }
 
     const loginHandler = this.routes.login.get(url.pathname)
@@ -222,9 +207,10 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     /**
      * 2.2 A provider handles the request.
      */
-    const providerResponse = loginHandler && loginHandler.pages.login.methods.includes(request.method)
+    const providerResponse = 
+        loginHandler && loginHandler.config.pages.login.methods.includes(request.method)
       ? await loginHandler.login(internalRequest)
-      : callbackHandler && callbackHandler.pages.callback.methods.includes(request.method)
+      : callbackHandler && callbackHandler.config.pages.callback.methods.includes(request.method)
       ? await callbackHandler.callback(internalRequest)
       : {}
 

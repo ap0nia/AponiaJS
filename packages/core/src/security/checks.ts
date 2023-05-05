@@ -10,18 +10,20 @@ type CheckPayload = { value: string }
 
 type AnyOAuthProvider = OAuthProvider<any> | OIDCProvider<any>
 
+type AnyOAuthProviderConfig = AnyOAuthProvider['config']
+
 // 15 minutes in seconds
 const PKCE_MAX_AGE = 60 * 15
 
 export const pkce = {
-  create: async (provider: AnyOAuthProvider) => {
+  create: async (config: AnyOAuthProviderConfig) => {
     const code_verifier = oauth.generateRandomCodeVerifier()
     const value = await oauth.calculatePKCECodeChallenge(code_verifier)
     const cookie = await signCookie(
       'pkceCodeVerifier',
-      provider,
+      config,
       code_verifier,
-      { ...provider.jwt, maxAge: PKCE_MAX_AGE }
+      { ...config.jwt, maxAge: PKCE_MAX_AGE }
     )
     return [ value, cookie ] as const
   },
@@ -33,24 +35,24 @@ export const pkce = {
    * @see https://www.rfc-editor.org/rfc/rfc7636
    * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#pkce
    */
-  async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.checks?.includes("pkce")) return [ 'auth', null ] as const
+  async use(request: InternalRequest, config: AnyOAuthProviderConfig) {
+    if (!config.checks?.includes("pkce")) return [ 'auth', null ] as const
 
-    const codeVerifier = request.cookies[provider.cookies.pkceCodeVerifier.name]
+    const codeVerifier = request.cookies[config.cookies.pkceCodeVerifier.name]
     if (!codeVerifier) throw new Error("PKCE code_verifier cookie was missing.")
 
-    const d = provider.jwt.decode ?? decode
+    const d = config.jwt.decode ?? decode
 
     const value = await d<CheckPayload>({
-      ...provider.jwt,
+      ...config.jwt,
       token: codeVerifier,
     })
     if (!value?.value) throw new Error("PKCE code_verifier value could not be parsed.")
 
     const cookie: Cookie = {
-      name: provider.cookies.pkceCodeVerifier.name,
+      name: config.cookies.pkceCodeVerifier.name,
       value: "",
-      options: { ...provider.cookies.pkceCodeVerifier.options, maxAge: 0 },
+      options: { ...config.cookies.pkceCodeVerifier.options, maxAge: 0 },
     }
 
     return [ value.value, cookie ] as const
@@ -61,14 +63,14 @@ export const pkce = {
 const STATE_MAX_AGE = 60 * 15
 
 export const state = {
-  create: async (provider: AnyOAuthProvider) => {
+  create: async (config: AnyOAuthProviderConfig) => {
     // TODO: support customizing the state
     const value = oauth.generateRandomState()
     const cookie = await signCookie(
       'state',
-      provider,
+      config,
       value,
-      { ...provider.jwt, maxAge: STATE_MAX_AGE }
+      { ...config.jwt, maxAge: STATE_MAX_AGE }
     )
     return [ value, cookie ] as const
   },
@@ -80,22 +82,22 @@ export const state = {
    * @see https://www.rfc-editor.org/rfc/rfc6749#section-10.12
    * @see https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1
    */
-  async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.checks?.includes('state')) return [ oauth.skipStateCheck, null ] as const
+  async use(request: InternalRequest, config: AnyOAuthProviderConfig) {
+    if (!config.checks?.includes('state')) return [ oauth.skipStateCheck, null ] as const
 
-    const state = request.cookies[provider.cookies.state.name]
+    const state = request.cookies[config.cookies.state.name]
     if (!state) throw new Error("State cookie was missing.")
 
-    const d = provider.jwt.decode ?? decode
+    const d = config.jwt.decode ?? decode
 
     // IDEA: Let the user do something with the returned state
-    const value = await d<CheckPayload>({ ...provider.jwt, token: state })
+    const value = await d<CheckPayload>({ ...config.jwt, token: state })
     if (!value?.value) throw new Error("State value could not be parsed.")
 
     const cookie: Cookie = {
-      name: provider.cookies.state.name,
+      name: config.cookies.state.name,
       value: '',
-      options: { ...provider.cookies.state.options, maxAge: 0 },
+      options: { ...config.cookies.state.options, maxAge: 0 },
     }
 
     return [ value.value, cookie ] as const
@@ -106,13 +108,13 @@ export const state = {
 const NONCE_MAX_AGE = 60 * 15
 
 export const nonce = {
-  create: async (provider: AnyOAuthProvider) => {
+  create: async (config: AnyOAuthProviderConfig) => {
     const value = oauth.generateRandomNonce()
     const cookie = await signCookie(
       'nonce',
-      provider,
+      config,
       value,
-      { ...provider.jwt, maxAge: NONCE_MAX_AGE },
+      { ...config.jwt, maxAge: NONCE_MAX_AGE },
     )
     return [ value, cookie ] as const
   },
@@ -124,21 +126,21 @@ export const nonce = {
    * @see https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes
    * @see https://danielfett.de/2020/05/16/pkce-vs-nonce-equivalent-or-not/#nonce
    */
-  async use(request: InternalRequest, provider: AnyOAuthProvider) {
-    if (!provider.checks?.includes('nonce')) return [ oauth.expectNoNonce, null ] as const
+  async use(request: InternalRequest, config: AnyOAuthProviderConfig) {
+    if (!config.checks?.includes('nonce')) return [ oauth.expectNoNonce, null ] as const
 
-    const nonce = request.cookies[provider.cookies.nonce.name]
+    const nonce = request.cookies[config.cookies.nonce.name]
     if (!nonce) throw new Error("Nonce cookie was missing.")
 
-    const d = provider.jwt.decode ?? decode
+    const d = config.jwt.decode ?? decode
 
-    const value = await d<CheckPayload>({ ...provider.jwt, token: nonce })
+    const value = await d<CheckPayload>({ ...config.jwt, token: nonce })
     if (!value?.value) throw new Error("Nonce value could not be parsed.")
 
     const cookie: Cookie = {
-      name: provider.cookies.nonce.name,
+      name: config.cookies.nonce.name,
       value: '',
-      options: { ...provider.cookies.nonce.options, maxAge: 0 },
+      options: { ...config.cookies.nonce.options, maxAge: 0 },
     }
 
     return [ value.value, cookie ] as const
@@ -149,17 +151,17 @@ export const nonce = {
  * Returns a signed cookie.
  */
 async function signCookie(
-  key: keyof AnyOAuthProvider['cookies'],
-  provider: AnyOAuthProvider,
+  key: keyof AnyOAuthProviderConfig['cookies'],
+  config: AnyOAuthProviderConfig,
   value: string,
   jwt: JWTOptions
 ) {
-  const e = provider.jwt.encode ?? encode
+  const e = config.jwt.encode ?? encode
   const signedCookie: Cookie = {
-    name: provider.cookies[key].name,
+    name: config.cookies[key].name,
     value: await e({ ...jwt, token: { value } }),
     options: { 
-      ...provider.cookies[key].options,
+      ...config.cookies[key].options,
       expires: new Date(Date.now() + (jwt.maxAge ?? 60) * 1000)
     },
   }

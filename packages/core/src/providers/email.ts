@@ -1,79 +1,41 @@
+import { randomString } from "../security/csrf.js";
 import type { InternalRequest } from "../internal/request.js";
 import type { InternalResponse } from "../internal/response.js";
+import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
-type Nullish = null | undefined | void
-
-type Awaitable<T> = PromiseLike<T> | T
-
-interface Pages {
-  /**
-   * Route for initial email login.
-   */
-  login: {
-    route: string
-    methods: string[]
-  }
-
-  /**
-   * Callback route for email login verification.
-   */
-  callback: {
-    route: string
-    methods: string[]
-  }
-}
+const noop = () => {}
 
 export interface EmailConfig<T> {
-  /**
-   * Extract the email from the initial request.
-   */
+  theme: any
   getEmail: (request: InternalRequest) => Awaitable<string | Nullish>
-
-  /**
-   * After getting the email, boilerplate is generated for the email.
-   * Handle the user logging in, i.e. sending a verification email.
-   */
-  onAuth: (request: InternalRequest) => Awaitable<InternalResponse<T>>
-
-  /**
-   * Handle verifying the user, i.e. after the user clicks the verification link in the email.
-   */
-  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
-
-  /**
-   * Pages.
-   */
-  pages?: Partial<Pages>
+  onAuth: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
+  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
+  pages: ProviderPages
 }
 
-/**
- * Email provider (first-party only).
- */
+export interface EmailUserConfig<T> extends DeepPartial<EmailConfig<T>> {}
+
 export class EmailProvider<T> {
   id = 'email' as const
 
-  onAuth: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
+  config: EmailConfig<T>
 
-  onVerify: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T>>
-
-  pages: Pages
-
-  theme: any
-
-  getEmail: (request: InternalRequest) => Awaitable<string | Nullish>
-
-  constructor(config: EmailConfig<T>) {
-    this.getEmail = config.getEmail
-    this.onAuth = config.onAuth
-    this.onVerify = config.onVerify
-    this.pages = {
-      login: {
-        route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
-        methods: config.pages?.login?.methods ?? ['POST'],
-      },
-      callback: {
-        route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
-        methods: config.pages?.callback?.methods ?? ['GET'],
+  constructor(config: EmailUserConfig<T>) {
+    this.config = {
+      getEmail: config.getEmail ?? noop,
+      onAuth: config.onAuth ?? noop,
+      onVerify: config.onVerify ?? noop,
+      theme: config.theme,
+      pages: {
+        login: {
+          route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
+          methods: config.pages?.login?.methods ?? ['POST'],
+        },
+        callback: {
+          route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
+          methods: config.pages?.callback?.methods ?? ['GET'],
+          redirect: config.pages?.callback?.redirect ?? '/',
+        }
       }
     }
   }
@@ -93,7 +55,7 @@ export class EmailProvider<T> {
   }
 
   async login(request: InternalRequest): Promise<InternalResponse> {
-    const email = await this.getEmail(request)
+    const email = await this.config.getEmail(request)
 
     // TODO: error
     if (!email) {
@@ -104,13 +66,13 @@ export class EmailProvider<T> {
 
     const escapedHost = request.url.host.replace(/\./g, "&#8203;.")
 
-    const url = new URL(`${request.url.origin}/${this.pages.callback}`)
+    const url = new URL(`${request.url.origin}/${this.config.pages.callback}`)
 
     url.searchParams.set("token", token)
     url.searchParams.set("email", email)
 
-    const brandColor = this.theme.brandColor ?? "#346df1"
-    const buttonText = this.theme.buttonText ?? "#fff"
+    const brandColor = this.config.theme.brandColor ?? "#346df1"
+    const buttonText = this.config.theme.buttonText ?? "#fff"
 
     const color = {
       background: "#f9f9f9",
@@ -153,26 +115,16 @@ export class EmailProvider<T> {
     </body>
     `
 
-    return this.onAuth(request, { html, email, token, provider: this })
+    return await (this.config.onAuth(request, { html, email, token, provider: this })) ?? {}
   }
 
   async callback(request: InternalRequest): Promise<InternalResponse> {
     const token = request.url.searchParams.get('token')
     const email = request.url.searchParams.get('email')
-    return this.onVerify(request, { token, email })
+    return await (this.config.onVerify(request, { token, email })) ?? {}
   }
 }
 
-export function Email<T>(config: EmailConfig<T>) {
+export function Email<T>(config: EmailUserConfig<T>) {
   return new EmailProvider<T>(config)
-}
-
-/** 
- * Web compatible method to create a random string of a given length
- */
-export function randomString(size: number = 32) {
-  const i2hex = (i: number) => ("0" + i.toString(16)).slice(-2)
-  const r = (a: string, i: number): string => a + i2hex(i)
-  const bytes = crypto.getRandomValues(new Uint8Array(size))
-  return Array.from(bytes).reduce(r, "")
 }

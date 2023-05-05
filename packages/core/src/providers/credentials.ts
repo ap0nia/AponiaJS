@@ -1,20 +1,8 @@
 import type { InternalRequest } from "../internal/request.js";
 import type { InternalResponse } from "../internal/response.js";
+import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
-type Nullish = void | null | undefined
-
-type Awaitable<T> = PromiseLike<T> | T
-
-interface Pages {
-  login: {
-    route: string
-    methods: string[]
-  }
-  callback: {
-    route: string
-    methods: string[]
-  }
-}
+const noop = () => {}
 
 export interface CredentialsConfig<T>  {
   /**
@@ -25,8 +13,10 @@ export interface CredentialsConfig<T>  {
   /**
    * Pages.
    */
-  pages?: Partial<Pages>
+  pages: ProviderPages
 }
+
+export interface CredentialsUserConfig<T> extends DeepPartial<CredentialsConfig<T>> {}
 
 /**
  * Credentials provider (first-party only).
@@ -34,20 +24,21 @@ export interface CredentialsConfig<T>  {
 export class CredentialsProvider<T> {
   id = 'credentials' as const
 
-  pages: Pages
+  config: CredentialsConfig<T>
 
-  onAuth: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
-
-  constructor(config: CredentialsConfig<T>) {
-    this.onAuth = config.onAuth
-    this.pages = {
-      login: {
-        route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
-        methods: config.pages?.login?.methods ?? ['POST'],
-      },
-      callback: {
-        route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
-        methods: config.pages?.callback?.methods ?? ['GET'],
+  constructor(config: CredentialsUserConfig<T>) {
+    this.config = {
+      onAuth: config.onAuth ?? noop,
+      pages: {
+        login: {
+          route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
+          methods: config.pages?.login?.methods ?? ['POST'],
+        },
+        callback: {
+          route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
+          methods: config.pages?.callback?.methods ?? ['GET'],
+          redirect: config.pages?.callback?.redirect ?? '/',
+        }
       }
     }
   }
@@ -70,17 +61,17 @@ export class CredentialsProvider<T> {
    * Login user.
    */
   async login(request: InternalRequest): Promise<InternalResponse> {
-    return (await this.onAuth(request)) ?? {}
+    return (await this.config.onAuth(request)) ?? {}
   }
 
   /**
    * Login user.
    */
   async callback(request: InternalRequest): Promise<InternalResponse> {
-    return (await this.onAuth(request)) ?? {}
+    return (await this.config.onAuth(request)) ?? {}
   }
 }
 
-export function Credentials<TUser>(config: CredentialsConfig<TUser>) {
+export function Credentials<TUser>(config: CredentialsUserConfig<TUser>) {
   return new CredentialsProvider<TUser>(config)
 }

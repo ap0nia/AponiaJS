@@ -1,6 +1,5 @@
 import type { Cookie } from "../security/cookie.js"
-
-type Nullish = null | undefined | void
+import type { Nullish } from "../types.js"
 
 /**
  * Internal Response.
