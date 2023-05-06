@@ -6,28 +6,28 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
 /**
  * Internal configuration for the email provider.
  */
-export interface EmailConfig<T> {
+export interface EmailConfig {
   theme: any
   pages: ProviderPages
   getEmail?: (request: InternalRequest) => Awaitable<string | Nullish>
-  onAuth?: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
-  onVerify?: (request: InternalRequest, args: any) => Awaitable<InternalResponse<T> | Nullish>
+  onAuth?: (request: InternalRequest, args: any) => Awaitable<InternalResponse | Nullish>
+  onVerify?: (request: InternalRequest, args: any) => Awaitable<InternalResponse | Nullish>
 }
 
 /**
  * User configuration for the email provider.
  */
-export interface EmailUserConfig<T> extends DeepPartial<EmailConfig<T>> {}
+export interface EmailUserConfig extends DeepPartial<EmailConfig> {}
 
 /**
  * Email provider.
  */
-export class EmailProvider<T> {
+export class EmailProvider {
   id = 'email' as const
 
-  config: EmailConfig<T>
+  config: EmailConfig
 
-  constructor(config: EmailUserConfig<T>) {
+  constructor(config: EmailUserConfig) {
     this.config = {
       ...config,
       theme: config.theme,
@@ -127,6 +127,6 @@ export class EmailProvider<T> {
 /**
  * Create a new email provider.
  */
-export function Email<T>(config: EmailUserConfig<T>) {
-  return new EmailProvider<T>(config)
+export function Email(config: EmailUserConfig) {
+  return new EmailProvider(config)
 }

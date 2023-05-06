@@ -8,11 +8,11 @@ import type { OAuthProvider } from "../providers/oauth.js"
 import type { OIDCProvider } from "../providers/oidc.js"
 import type { Awaitable, Nullish, PageEndpoint } from "../types.js"
 
-type AnyProvider<T> = 
-  | OAuthProvider<any, T> 
-  | OIDCProvider<any, T> 
-  | CredentialsProvider<T> 
-  | EmailProvider<T>
+type AnyProvider = 
+  | OAuthProvider<any> 
+  | OIDCProvider<any> 
+  | CredentialsProvider
+  | EmailProvider
 
 /**
  * Static auth pages handled by the framework.
@@ -42,26 +42,26 @@ interface AuthPages {
 /**
  * Callbacks for static auth pages.
  */
-type AuthCallbacks<TUser, TContext = undefined> = {
+type AuthCallbacks = {
   [k in keyof AuthPages]?: (
     request: InternalRequest,
-    context: TContext
-  ) => Awaitable<InternalResponse<TUser> | Nullish>
+    context: Perdition.Context
+  ) => Awaitable<InternalResponse | Nullish>
 }
 
 /**
  * Auth configuration.
  */
-export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined, TContext = undefined> {
+export interface AuthConfig {
   /**
    * Session manager. Handles session creation, validation / decoding, and destruction.
    */
-  session: SessionManager<TUser, TSession, TRefresh>
+  session: SessionManager
 
   /**
    * Providers to use for authentication.
    */
-  providers: AnyProvider<TUser>[]
+  providers: AnyProvider[]
 
   /**
    * Static auth pages.
@@ -71,27 +71,27 @@ export interface AuthConfig<TUser, TSession = TUser, TRefresh = undefined, TCont
   /**
    * Callbacks for static auth pages.
    */
-  callbacks?: Partial<AuthCallbacks<TUser, TContext>>
+  callbacks?: Partial<AuthCallbacks>
 }
 
 /**
  * Auth framework.
  */
-export class Auth<TUser, TSession, TRefresh = undefined, TContext = undefined> {
-  session: SessionManager<TUser, TSession, TRefresh>
+export class Auth {
+  session: SessionManager
 
-  providers: AnyProvider<TUser>[]
+  providers: AnyProvider[]
 
   pages: AuthPages
 
-  callbacks: Partial<AuthCallbacks<TUser, TContext>>
+  callbacks: Partial<AuthCallbacks>
 
   routes: {
-    login: Map<string, AnyProvider<TUser>>
-    callback: Map<string, AnyProvider<TUser>>
+    login: Map<string, AnyProvider>
+    callback: Map<string, AnyProvider>
   }
 
-  constructor(config: AuthConfig<TUser, TSession, TRefresh, TContext>) {
+  constructor(config: AuthConfig) {
     this.providers = config.providers
 
     this.session = config.session
@@ -127,7 +127,7 @@ export class Auth<TUser, TSession, TRefresh = undefined, TContext = undefined> {
    */
   async handle(
     request: Request | InternalRequest,
-    context: TContext = undefined as any
+    context: Perdition.Context = undefined as any
   ): Promise<InternalResponse> {
     const internalRequest = 'cookies' in request ? request : await toInternalRequest(request)
 
@@ -143,7 +143,7 @@ export class Auth<TUser, TSession, TRefresh = undefined, TContext = undefined> {
    */
   async generateInternalResponse(
     internalRequest: InternalRequest,
-    context: TContext = undefined as any
+    context: Perdition.Context = undefined as any
   ): Promise<InternalResponse> {
     const { url, request } = internalRequest
 
@@ -212,8 +212,6 @@ export class Auth<TUser, TSession, TRefresh = undefined, TContext = undefined> {
 /**
  * Create an auth instance.
  */
-export function AponiaAuth<TUser, TSession = TUser, TRefresh = undefined, TContext = undefined>(
-  config: AuthConfig<TUser, TSession, TRefresh, TContext>
-) {
+export function AponiaAuth(config: AuthConfig) {
   return new Auth(config)
 }

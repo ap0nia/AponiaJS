@@ -21,7 +21,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 /**
  * Internal OAuth configuration.
  */
-export interface OAuthConfig<TProfile, TUser = TProfile> {
+export interface OAuthConfig<T> {
   id: string
   clientId: string
   clientSecret: string
@@ -31,21 +31,21 @@ export interface OAuthConfig<TProfile, TUser = TProfile> {
   checks: OAuthCheck[]
   pages: ProviderPages
   endpoints: {
-    authorization: Endpoint<OAuthProvider<TUser>>
-    token: Endpoint<OAuthProvider<TUser>, TokenSet>
-    userinfo: Endpoint<{ provider: OAuthProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
+    authorization: Endpoint<OAuthProvider<T>>
+    token: Endpoint<OAuthProvider<T>, TokenSet>
+    userinfo: Endpoint<{ provider: OAuthProvider<T>; tokens: TokenSet }, T>
   }
   onAuth: (
-    user: TProfile,
-    context: OAuthProvider<TProfile, TUser>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
+    user: T,
+    context: OAuthProvider<T>,
+  ) => Awaitable<InternalResponse | Nullish> | Nullish
 }
 
 /**
  * OAuth user configuration.
  */
-export interface OAuthUserConfig<TProfile, TUser = TProfile> extends 
-  DeepPartial<Omit<OAuthConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> 
+export interface OAuthUserConfig<T> extends 
+  DeepPartial<Omit<OAuthConfig<T>, 'clientId' | 'clientSecret'>> 
 {
   clientId: string
   clientSecret: string
@@ -55,19 +55,19 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile> extends
 /**
  * Pre-defined OAuth default configuration.
  */
-export interface OAuthDefaultConfig<TProfile> extends 
-  Pick<OAuthConfig<TProfile>, 'id' | 'endpoints'>,
-  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
+export interface OAuthDefaultConfig<T> extends 
+  Pick<OAuthConfig<T>, 'id' | 'endpoints'>,
+  Omit<OAuthUserConfig<T>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
 
 /**
  * OAuth provider.
  */
-export class OAuthProvider<TProfile, TUser = TProfile> {
-  config: OAuthConfig<TProfile, TUser>
+export class OAuthProvider<T> {
+  config: OAuthConfig<T>
 
   authorizationServer: oauth.AuthorizationServer
 
-  constructor(options: OAuthConfig<TProfile, TUser>) {
+  constructor(options: OAuthConfig<T>) {
     this.config = options
 
     this.authorizationServer = {
@@ -206,9 +206,9 @@ export class OAuthProvider<TProfile, TUser = TProfile> {
  * Merge user and pre-defined default OAuth options.
  */
 export function mergeOAuthOptions(
-  userOptions: OAuthUserConfig<any, any>,
+  userOptions: OAuthUserConfig<any>,
   defaultOptions: OAuthDefaultConfig<any>,
-): OAuthConfig<any, any> {
+): OAuthConfig<any> {
   const id = userOptions.id ?? defaultOptions.id
 
   return {

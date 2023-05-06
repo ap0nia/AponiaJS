@@ -22,10 +22,10 @@ function asPromise<T>(value: Awaitable<T>): Promise<T> {
   return value instanceof Promise ? value : Promise.resolve(value)
 }
 
-interface NewSession<TUser, TSession, TRefresh> { 
-  user: TUser,
-  accessToken: TSession,
-  refreshToken?: TRefresh 
+interface NewSession { 
+  user: Perdition.User,
+  accessToken: Perdition.Session
+  refreshToken?: Perdition.Refresh
 }
 
 interface TokenMaxAge {
@@ -40,7 +40,7 @@ interface Pages {
 /**
  * Internal session configuration.
  */
-export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
+export interface SessionConfig {
   secret: string
 
   pages: Partial<Pages>
@@ -53,35 +53,35 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
 
   useSecureCookies?: boolean
 
-  createSession?: (user: TUser) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
+  createSession?: (user: Perdition.User) => Awaitable<NewSession | Nullish>;
 
-  getUserFromSession: (session: TSession) => Awaitable<TUser | Nullish>;
+  getUserFromSession: (session: Perdition.Session) => Awaitable<Perdition.User | Nullish>;
 
   handleRefresh?: (
-    tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
-  ) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
+    tokens: { accessToken?: Perdition.Session | Nullish, refreshToken?: Perdition.Refresh | Nullish  }
+  ) => Awaitable<NewSession | Nullish>;
 
   onInvalidateSession?: (
-    session: TSession,
-    refresh: TRefresh | Nullish,
-    context: SessionManager<TUser, TSession, TRefresh>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish>
+    session: Perdition.Session,
+    refresh: Perdition.Refresh | Nullish,
+    context: SessionManager,
+  ) => Awaitable<InternalResponse | Nullish>
 }
 
 /**
  * Session user configuration.
  */
-export interface SessionUserConfig<TUser, TSession = TUser, TRefresh = undefined> extends 
-  DeepPartial<Omit<SessionConfig<TUser, TSession, TRefresh>, 'secret'>>,
-  Required<Pick<SessionConfig<TUser, TSession, TRefresh>, 'secret'>> {}
+export interface SessionUserConfig extends 
+  DeepPartial<Omit<SessionConfig, 'secret'>>,
+  Required<Pick<SessionConfig, 'secret'>> {}
 
 /**
  * Session manager.
  */
-export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
-  config: SessionConfig<TUser, TSession, TRefresh>
+export class SessionManager {
+  config: SessionConfig
 
-  constructor(config: SessionUserConfig<TUser, TSession, TRefresh>) {
+  constructor(config: SessionUserConfig) {
     this.config = {
       ...config,
       secret: config.secret,
@@ -97,19 +97,19 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
         accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
         refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,
       },
-      getUserFromSession: config.getUserFromSession ?? ((session: TSession) => session as any),
+      getUserFromSession: config.getUserFromSession ?? ((session: Perdition.Session) => session as any),
     }
   }
 
   async decodeTokens(tokens: { accessToken?: string, refreshToken?: string }) {
     const access = await asPromise(
-      this.config.jwt.decode<TSession>({ secret: this.config.secret, token: tokens.accessToken })
+      this.config.jwt.decode<Perdition.Session>({ secret: this.config.secret, token: tokens.accessToken })
     ).catch(e => {
       console.log('Error decoding access token', e)
     })
 
     const refresh = await asPromise(
-      this.config.jwt.decode<TRefresh>({ secret: this.config.secret, token: tokens.refreshToken })
+      this.config.jwt.decode<Perdition.Refresh>({ secret: this.config.secret, token: tokens.refreshToken })
     ).catch(e => {
       console.log('Error decoding access token', e)
     })
@@ -117,7 +117,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
     return { access, refresh }
   }
 
-  async createCookies(newSession: NewSession<TUser, TSession, TRefresh>): Promise<Cookie[]> {
+  async createCookies(newSession: NewSession): Promise<Cookie[]> {
     const cookies: Cookie[] = []
 
     if (newSession?.accessToken) {
@@ -156,7 +156,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Get the user from a request.
    */
-  async getUserFromRequest(request: InternalRequest): Promise<TUser | Nullish> {
+  async getUserFromRequest(request: InternalRequest): Promise<Perdition.User | Nullish> {
     const accessToken = request.cookies[this.config.cookies.accessToken.name]
 
     const { access } = await this.decodeTokens({ accessToken })
@@ -169,7 +169,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Handle a request by refreshing the user's session if necessary and possible.
    */
-  async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
+  async handleRequest(request: InternalRequest): Promise<InternalResponse> {
     const accessToken = request.cookies[this.config.cookies.accessToken.name]
     const refreshToken = request.cookies[this.config.cookies.refreshToken.name]
 
@@ -192,7 +192,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   /**
    * Log a user out.
    */
-  async logout(request: Request): Promise<InternalResponse<TUser>> {
+  async logout(request: Request): Promise<InternalResponse> {
     const cookies = parse(request.headers.get("cookie") ?? "")
 
     const accessToken = cookies[this.config.cookies.accessToken.name]
@@ -228,8 +228,6 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
 /**
  * Create a new session manager.
  */
-export function AponiaSession<TUser, TSession = TUser, TRefresh = undefined>(
-  config: SessionUserConfig<TUser, TSession, TRefresh>
-): SessionManager<TUser, TSession, TRefresh> {
+export function AponiaSession(config: SessionUserConfig): SessionManager {
   return new SessionManager(config)
 }

@@ -5,25 +5,25 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
 /**
  * Internal configuration for the credentials provider.
  */
-export interface CredentialsConfig<T>  {
-  onAuth?: (internalRequest: InternalRequest) => Awaitable<InternalResponse<T> | Nullish>
+export interface CredentialsConfig  {
+  onAuth?: (internalRequest: InternalRequest) => Awaitable<InternalResponse | Nullish>
   pages: ProviderPages
 }
 
 /**
  * User configuration for the credentials provider.
  */
-export interface CredentialsUserConfig<T> extends DeepPartial<CredentialsConfig<T>> {}
+export interface CredentialsUserConfig extends DeepPartial<CredentialsConfig> {}
 
 /**
  * Credentials provider.
  */
-export class CredentialsProvider<T> {
+export class CredentialsProvider {
   id = 'credentials' as const
 
-  config: CredentialsConfig<T>
+  config: CredentialsConfig
 
-  constructor(config: CredentialsUserConfig<T>) {
+  constructor(config: CredentialsUserConfig) {
     this.config = {
       ...config,
       pages: {
@@ -60,6 +60,6 @@ export class CredentialsProvider<T> {
 /**
  * Create a credentials provider.
  */
-export function Credentials<TUser>(config: CredentialsUserConfig<TUser>) {
-  return new CredentialsProvider<TUser>(config)
+export function Credentials(config: CredentialsUserConfig) {
+  return new CredentialsProvider(config)
 }

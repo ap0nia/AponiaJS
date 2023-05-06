@@ -5,11 +5,11 @@ import type { Nullish } from "../types.js"
  * An internally generated response.
  * Should be handled accordingly depending on the context of the usage.
  */
-export interface InternalResponse<TUser = any> {
+export interface InternalResponse {
   /**
    * The decoded user. 
    */
-  user?: TUser | Nullish
+  user?: Perdition.User | Nullish
 
   /**
    * HTTP status code.

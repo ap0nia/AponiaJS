@@ -27,11 +27,8 @@ export interface Options {
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status <= 308
 
-export function createAuthHelpers<TUser, TSession, TRefresh>(
-  auth: Auth<TUser, TSession, TRefresh, RequestEvent>,
-  options: Options = {}
-) {
-  const getUser = async (event: RequestEvent): Promise<TUser | null> => {
+export function createAuthHelpers(auth: Auth, options: Options = {}) {
+  const getUser = async (event: RequestEvent): Promise<Perdition.User | null> => {
     const initialUser = (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey]
     if (initialUser) return initialUser
 
@@ -48,6 +45,7 @@ export function createAuthHelpers<TUser, TSession, TRefresh>(
 
   const handle: Handle = async ({ event, resolve }) => {
     const internalResponse = await auth.handle(event.request, event)
+    let x: Perdition.Context = 123
 
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
