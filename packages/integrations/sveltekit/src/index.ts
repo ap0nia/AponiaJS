@@ -29,7 +29,9 @@ export function createAuthHandle<TUser, TSession, TRefresh>(
     const { access } = await auth.session.decodeTokens({ accessToken })
     if (!access) return null
 
-    const user = auth.session.config.getUserFromSession(access)
+    const user = await auth.session.config.getUserFromSession(access)
+    if (!user) return null
+
     return user
   }
 
