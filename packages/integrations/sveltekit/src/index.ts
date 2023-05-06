@@ -27,7 +27,7 @@ export interface Options {
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status <= 308
 
-export function createAuthHandle<TUser, TSession, TRefresh>(
+export function createAuthHelpers<TUser, TSession, TRefresh>(
   auth: Auth<TUser, TSession, TRefresh>,
   options: Options = {}
 ) {
@@ -71,4 +71,4 @@ export function createAuthHandle<TUser, TSession, TRefresh>(
   return { handle, getUser }
 }
 
-export default createAuthHandle
+export default createAuthHelpers
