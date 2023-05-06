@@ -150,18 +150,18 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       return await this.callbacks.logout?.(internalRequest) ?? this.session.logout(request)
 
     if (url.pathname === this.pages.update.route && this.pages.update.methods.includes(request.method))
-      return await this.callbacks.update?.(internalRequest) ?? {}
+      return await this.callbacks.update?.(internalRequest) ?? sessionResponse
 
     if (url.pathname === this.pages.forgot.route && this.pages.forgot.methods.includes(request.method))
-      return await this.callbacks.forgot?.(internalRequest) ?? {}
+      return await this.callbacks.forgot?.(internalRequest) ?? sessionResponse
 
     if (url.pathname === this.pages.reset.route && this.pages.reset.methods.includes(request.method))
-      return await this.callbacks.reset?.(internalRequest) ?? {}
+      return await this.callbacks.reset?.(internalRequest) ?? sessionResponse
 
     const loginHandler = this.routes.login.get(url.pathname)
     const callbackHandler = this.routes.callback.get(url.pathname)
 
-    if (!loginHandler && !callbackHandler) return {}
+    if (!loginHandler && !callbackHandler) return sessionResponse
 
     /**
      * 2.2. Providers handle login and callback pages.
