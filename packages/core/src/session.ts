@@ -153,27 +153,28 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
     return cookies
   }
 
+  /**
+   * Handle a request.
+   * Checks if the user is logged in, and refreshes the session if necessary.
+   */
   async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
-    const response: InternalResponse<TUser> = {}
-    response.cookies ??= []
-
     const accessToken = request.cookies[this.config.cookies.accessToken.name]
-
     const refreshToken = request.cookies[this.config.cookies.refreshToken.name]
+
+    // User is logged in or logged out and doesn't need to be refreshed.
+
+    if (accessToken || (!accessToken && !refreshToken)) return { session: accessToken }
+
+    // User is logged out, but can be refreshed.
 
     const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
 
-    response.user = access ? await this.config.getUserFromSession(access) : null
+    const refreshedTokens = await this.config.handleRefresh?.({ accessToken: access, refreshToken: refresh })
 
-    const sessionTokens = await this.config.handleRefresh?.({ accessToken: access, refreshToken: refresh })
-
-    if (sessionTokens) {
-      response.cookies.push(...await this.createCookies(sessionTokens))
+    return {
+      user: refreshedTokens?.user,
+      cookies: refreshedTokens ? await this.createCookies(refreshedTokens) : undefined,
     }
-    
-    response.user ||= sessionTokens?.user
-
-    return response
   }
 
   async logout(request: Request): Promise<InternalResponse<TUser>> {

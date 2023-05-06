@@ -119,11 +119,11 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
 
   /**
    * Handle an incoming request.
-   * Assumes a `Request` object according to web standards.
+   * Assumes a `Request` object according to web standards. Or `InternalRequest` as well.
    * Convert framework implementation to one if it doesn't conform, i.e. ExpressJS.
    */
-  async handle(request: Request): Promise<InternalResponse> {
-    const internalRequest = await toInternalRequest(request)
+  async handle(request: Request | InternalRequest): Promise<InternalResponse> {
+    const internalRequest = 'cookies' in request ? request : await toInternalRequest(request)
 
     const internalResponse = await this
       .generateInternalResponse(internalRequest)
@@ -171,17 +171,14 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       }
     }
 
-    const cookies = sessionResponse.cookies ?? []
-    if (providerResponse.cookies) cookies.push(...providerResponse.cookies)
-
-    const internalResponse = { 
-      ...sessionResponse,
-      ...providerResponse,
-      cookies,
-      user: providerResponse.user || sessionResponse.user
+    if (sessionResponse.cookies) {
+      providerResponse.cookies ??= []
+      providerResponse.cookies.push(...sessionResponse.cookies)
     }
 
-    return internalResponse
+    providerResponse.user ||= sessionResponse.user
+
+    return providerResponse
   }
 }
 
