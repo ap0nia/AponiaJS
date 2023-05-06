@@ -1,4 +1,5 @@
-import type { Auth } from 'aponia'
+import { parse } from 'cookie'
+import type { Auth, InternalRequest } from 'aponia'
 import { redirect } from '@sveltejs/kit'
 import type { Handle, RequestEvent } from '@sveltejs/kit'
 
@@ -6,7 +7,14 @@ const defaultLocalsUserKey = 'user'
 
 const defaultLocalsAuthKey = 'aponia-auth'
 
-export interface Options {
+export interface SvelteInternalRequest extends InternalRequest, Omit<RequestEvent, 'cookies'> {}
+
+export interface Options<T extends InternalRequest = InternalRequest> {
+  /**
+   * Control what kind of request is passed to the auth library.
+   */
+  toInternalRequest: (requestEvent: RequestEvent) => T
+
   /**
    * Key to store the user in locals.
    * User will only be defined if the session was refreshed or provider action occurred during the current request.
@@ -27,8 +35,13 @@ export interface Options {
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status <= 308
 
-export function createAuthHelpers(auth: Auth, options: Options = {}) {
-  const getUser = async (event: RequestEvent): Promise<Perdition.User | null> => {
+export function createAuthHelpers<
+  TUser,
+  TSession = TUser,
+  TRefresh = undefined,
+  TRequest extends InternalRequest = InternalRequest
+>(auth: Auth<TUser, TSession, TRefresh, TRequest>, options: Options<TRequest>) {
+  const getUser = async (event: RequestEvent): Promise<TUser | null> => {
     const initialUser = (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey]
     if (initialUser) return initialUser
 
@@ -44,8 +57,7 @@ export function createAuthHelpers(auth: Auth, options: Options = {}) {
   }
 
   const handle: Handle = async ({ event, resolve }) => {
-    const internalResponse = await auth.handle(event.request, event)
-    let x: Perdition.Context = 123
+    const internalResponse = await auth.handle(options.toInternalRequest(event))
 
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
@@ -67,6 +79,10 @@ export function createAuthHelpers(auth: Auth, options: Options = {}) {
   }
 
   return { handle, getUser }
+}
+
+export function defaultToInternalRequest(event: RequestEvent): SvelteInternalRequest {
+  return { ...event, cookies: parse(event.request.headers.get('cookie') ?? '') }
 }
 
 export default createAuthHelpers

@@ -1,6 +1,6 @@
 {
   "name": "@aponia/integrations-sveltekit",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -27,10 +27,12 @@
     "vite": "^4.2.1"
   },
   "dependencies": {
-    "aponia": "*"
+    "aponia": "*",
+    "cookie": "^0.5.0"
   },
   "devDependencies": {
     "@sveltejs/kit": "^1.15.5",
+    "@types/cookie": "^0.5.1",
     "@types/node": "^18.15.11",
     "rimraf": "^5.0.0",
     "svelte": "^3.58.0",

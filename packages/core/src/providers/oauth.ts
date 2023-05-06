@@ -21,7 +21,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 /**
  * Internal OAuth configuration.
  */
-export interface OAuthConfig<T> {
+export interface OAuthConfig<TProfile, TUser = TProfile> {
   id: string
   clientId: string
   clientSecret: string
@@ -31,21 +31,21 @@ export interface OAuthConfig<T> {
   checks: OAuthCheck[]
   pages: ProviderPages
   endpoints: {
-    authorization: Endpoint<OAuthProvider<T>>
-    token: Endpoint<OAuthProvider<T>, TokenSet>
-    userinfo: Endpoint<{ provider: OAuthProvider<T>; tokens: TokenSet }, T>
+    authorization: Endpoint<OAuthProvider<TProfile, TUser>>
+    token: Endpoint<OAuthProvider<TProfile, TUser>, TokenSet>
+    userinfo: Endpoint<{ provider: OAuthProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
   }
   onAuth: (
-    user: T,
-    context: OAuthProvider<T>,
-  ) => Awaitable<InternalResponse | Nullish> | Nullish
+    user: TProfile,
+    context: OAuthProvider<TProfile, TUser>,
+  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
 /**
  * OAuth user configuration.
  */
-export interface OAuthUserConfig<T> extends 
-  DeepPartial<Omit<OAuthConfig<T>, 'clientId' | 'clientSecret'>> 
+export interface OAuthUserConfig<TProfile, TUser = TProfile> extends 
+  DeepPartial<Omit<OAuthConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> 
 {
   clientId: string
   clientSecret: string
@@ -55,19 +55,19 @@ export interface OAuthUserConfig<T> extends
 /**
  * Pre-defined OAuth default configuration.
  */
-export interface OAuthDefaultConfig<T> extends 
-  Pick<OAuthConfig<T>, 'id' | 'endpoints'>,
-  Omit<OAuthUserConfig<T>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
+export interface OAuthDefaultConfig<TProfile, TUser = TProfile> extends 
+  Pick<OAuthConfig<TProfile, TUser>, 'id' | 'endpoints'>,
+  Omit<OAuthUserConfig<TProfile, TUser>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
 
 /**
  * OAuth provider.
  */
-export class OAuthProvider<T> {
-  config: OAuthConfig<T>
+export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends InternalRequest = InternalRequest> {
+  config: OAuthConfig<TProfile, TUser>
 
   authorizationServer: oauth.AuthorizationServer
 
-  constructor(options: OAuthConfig<T>) {
+  constructor(options: OAuthConfig<TProfile, TUser>) {
     this.config = options
 
     this.authorizationServer = {
@@ -91,7 +91,7 @@ export class OAuthProvider<T> {
   /**
    * Handle OAuth login request.
    */
-  async login(request: InternalRequest): Promise<InternalResponse> {
+  async login(request: TRequest): Promise<InternalResponse<TUser>> {
     const url = new URL(this.config.endpoints.authorization.url)
 
     const cookies: Cookie[] = []
@@ -133,7 +133,7 @@ export class OAuthProvider<T> {
   /**
    * Handle OAuth callback request.
    */
-  async callback(request: InternalRequest): Promise<InternalResponse> {
+  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this.config)

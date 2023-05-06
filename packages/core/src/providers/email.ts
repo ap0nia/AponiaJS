@@ -6,28 +6,29 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
 /**
  * Internal configuration for the email provider.
  */
-export interface EmailConfig {
+export interface EmailConfig<TUser, TRequest extends InternalRequest = InternalRequest> {
   theme: any
   pages: ProviderPages
-  getEmail?: (request: InternalRequest) => Awaitable<string | Nullish>
-  onAuth?: (request: InternalRequest, args: any) => Awaitable<InternalResponse | Nullish>
-  onVerify?: (request: InternalRequest, args: any) => Awaitable<InternalResponse | Nullish>
+  getEmail?: (request: TRequest) => Awaitable<string | Nullish>
+  onAuth?: (request: TRequest, args: any) => Awaitable<InternalResponse<TUser> | Nullish>
+  onVerify?: (request: TRequest, args: any) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
 /**
  * User configuration for the email provider.
  */
-export interface EmailUserConfig extends DeepPartial<EmailConfig> {}
+export interface EmailUserConfig<TUser, TRequest extends InternalRequest = InternalRequest>
+  extends DeepPartial<EmailConfig<TUser, TRequest>> { }
 
 /**
  * Email provider.
  */
-export class EmailProvider {
+export class EmailProvider<TUser, TRequest extends InternalRequest = InternalRequest> {
   id = 'email' as const
 
-  config: EmailConfig
+  config: EmailConfig<TUser, TRequest>
 
-  constructor(config: EmailUserConfig) {
+  constructor(config: EmailUserConfig<TUser, TRequest>) {
     this.config = {
       ...config,
       theme: config.theme,
@@ -53,7 +54,7 @@ export class EmailProvider {
     return this
   }
 
-  async login(request: InternalRequest): Promise<InternalResponse> {
+  async login(request: TRequest): Promise<InternalResponse<TUser>> {
     const email = await this.config.getEmail?.(request)
 
     // TODO: error
@@ -117,7 +118,7 @@ export class EmailProvider {
     return await (this.config.onAuth?.(request, { html, email, token, provider: this })) ?? {}
   }
 
-  async callback(request: InternalRequest): Promise<InternalResponse> {
+  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
     const token = request.url.searchParams.get('token')
     const email = request.url.searchParams.get('email')
     return await (this.config.onVerify?.(request, { token, email })) ?? {}
@@ -127,6 +128,8 @@ export class EmailProvider {
 /**
  * Create a new email provider.
  */
-export function Email(config: EmailUserConfig) {
+export function Email<TUser, TRequest extends InternalRequest = InternalRequest>(
+  config: EmailUserConfig<TUser, TRequest>
+) {
   return new EmailProvider(config)
 }

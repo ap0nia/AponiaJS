@@ -20,7 +20,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 /**
  * Internal OIDC configuration.
  */
-export interface OIDCConfig<T> {
+export interface OIDCConfig<TProfile, TUser = TProfile> {
   id: string
   issuer: string
   client: oauth.Client
@@ -31,21 +31,21 @@ export interface OIDCConfig<T> {
   checks: OIDCCheck[]
   pages: ProviderPages
   endpoints: {
-    authorization: Endpoint<OIDCProvider<T>>
-    token: Endpoint<OIDCProvider<T>, TokenSet>
-    userinfo: Endpoint<{ provider: OIDCProvider<T>; tokens: TokenSet }, T>
+    authorization: Endpoint<OIDCProvider<TProfile, TUser>>
+    token: Endpoint<OIDCProvider<TProfile, TUser>, TokenSet>
+    userinfo: Endpoint<{ provider: OIDCProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
   }
   onAuth: (
-    user: T,
-    context: OIDCProvider<T>,
+    user: TProfile,
+    context: OIDCProvider<TProfile, TUser>,
   ) => Awaitable<InternalResponse | Nullish> | Nullish
 }
 
 /**
  * OIDC user configuration.
  */
-export interface OIDCUserConfig<T> extends 
-  DeepPartial<Omit<OIDCConfig<T>, 'clientId' | 'clientSecret'>> {
+export interface OIDCUserConfig<TProfile, TUser = TProfile> extends 
+  DeepPartial<Omit<OIDCConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> {
   clientId: string
   clientSecret: string
   useSecureCookies?: boolean
@@ -54,19 +54,19 @@ export interface OIDCUserConfig<T> extends
 /**
  * Pre-defined OIDC default configuration.
  */
-export interface OIDCDefaultConfig<T> extends 
-  Pick<OIDCConfig<T>, 'id' | 'issuer'>,
-  Omit<OIDCUserConfig<T>, 'id' | 'issuer' | 'clientId' | 'clientSecret'> {}
+export interface OIDCDefaultConfig<TProfile, TUser = TProfile> extends 
+  Pick<OIDCConfig<TProfile, TUser>, 'id' | 'issuer'>,
+  Omit<OIDCUserConfig<TProfile, TUser>, 'id' | 'issuer' | 'clientId' | 'clientSecret'> {}
 
 /**
  * OIDC provider.
  */
-export class OIDCProvider<T> {
-  config: OIDCConfig<T>
+export class OIDCProvider<TProfile, TUser = TProfile, TRequest extends InternalRequest = InternalRequest> {
+  config: OIDCConfig<TProfile, TUser>
 
   authorizationServer: oauth.AuthorizationServer
 
-  constructor(options: OIDCConfig<T>) {
+  constructor(options: OIDCConfig<TProfile, TUser>) {
     this.config = options
     this.authorizationServer = { issuer: options.issuer }
   }
@@ -103,7 +103,7 @@ export class OIDCProvider<T> {
   /**
    * Handle OAuth login request.
    */
-  async login(request: InternalRequest): Promise<InternalResponse> {
+  async login(request: TRequest): Promise<InternalResponse<TUser>> {
     await this.initialize()
 
     if (!this.authorizationServer.authorization_endpoint) {
@@ -153,7 +153,7 @@ export class OIDCProvider<T> {
   /**
    * Handle OAuth callback request.
    */
-  async callback(request: InternalRequest): Promise<InternalResponse> {
+  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
     await this.initialize()
 
     const cookies: Cookie[] = []
@@ -207,7 +207,7 @@ export class OIDCProvider<T> {
 
     if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
 
-    const profile = oauth.getValidatedIdTokenClaims(result) as T
+    const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
 
     const processedResponse = (await this.config.onAuth(profile, this)) ?? {
       redirect: this.config.pages.callback.redirect,

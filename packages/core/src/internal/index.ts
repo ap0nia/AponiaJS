@@ -1,4 +1,3 @@
-import { toInternalRequest } from "./request.js"
 import type { InternalRequest } from "./request.js"
 import type { InternalResponse } from "./response.js"
 import type { SessionManager } from "../session.js"
@@ -8,11 +7,11 @@ import type { OAuthProvider } from "../providers/oauth.js"
 import type { OIDCProvider } from "../providers/oidc.js"
 import type { Awaitable, Nullish, PageEndpoint } from "../types.js"
 
-type AnyProvider = 
-  | OAuthProvider<any> 
-  | OIDCProvider<any> 
-  | CredentialsProvider
-  | EmailProvider
+type AnyProvider<TUser, TRequest extends InternalRequest = InternalRequest> = 
+  | OAuthProvider<any, TUser, TRequest> 
+  | OIDCProvider<any, TUser, TRequest> 
+  | CredentialsProvider<TUser, TRequest>
+  | EmailProvider<TUser, TRequest>
 
 /**
  * Static auth pages handled by the framework.
@@ -42,26 +41,28 @@ interface AuthPages {
 /**
  * Callbacks for static auth pages.
  */
-type AuthCallbacks = {
-  [k in keyof AuthPages]?: (
-    request: InternalRequest,
-    context: Perdition.Context
-  ) => Awaitable<InternalResponse | Nullish>
+type AuthCallbacks<TUser, TRequest extends InternalRequest = InternalRequest> = {
+  [k in keyof AuthPages]?: (request: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
 }
 
 /**
  * Auth configuration.
  */
-export interface AuthConfig {
+export interface AuthConfig<
+  TUser,
+  TSession = TUser,
+  TRefresh = undefined,
+  TRequest extends InternalRequest = InternalRequest
+> {
   /**
    * Session manager. Handles session creation, validation / decoding, and destruction.
    */
-  session: SessionManager
+  session: SessionManager<TUser, TSession, TRefresh, TRequest>
 
   /**
    * Providers to use for authentication.
    */
-  providers: AnyProvider[]
+  providers: AnyProvider<TUser>[]
 
   /**
    * Static auth pages.
@@ -71,27 +72,32 @@ export interface AuthConfig {
   /**
    * Callbacks for static auth pages.
    */
-  callbacks?: Partial<AuthCallbacks>
+  callbacks?: Partial<AuthCallbacks<TUser, TRequest>>
 }
 
 /**
  * Auth framework.
  */
-export class Auth {
-  session: SessionManager
+export class Auth<
+  TUser,
+  TSession = TUser,
+  TRefresh = undefined,
+  TRequest extends InternalRequest = InternalRequest
+> {
+  session: SessionManager<TUser, TSession, TRefresh, TRequest>
 
-  providers: AnyProvider[]
+  providers: AnyProvider<TUser, TRequest>[]
 
   pages: AuthPages
 
-  callbacks: Partial<AuthCallbacks>
+  callbacks: Partial<AuthCallbacks<TUser, TRequest>>
 
   routes: {
-    login: Map<string, AnyProvider>
-    callback: Map<string, AnyProvider>
+    login: Map<string, AnyProvider<TUser, TRequest>>
+    callback: Map<string, AnyProvider<TUser, TRequest>>
   }
 
-  constructor(config: AuthConfig) {
+  constructor(config: AuthConfig<TUser, TSession, TRefresh, TRequest>) {
     this.providers = config.providers
 
     this.session = config.session
@@ -121,18 +127,11 @@ export class Auth {
   }
 
   /**
-   * Handle an incoming request.
-   * Assumes a `Request` object according to web standards. Or `InternalRequest` as well.
-   * Convert framework implementation to one if it doesn't conform, i.e. ExpressJS.
+   * Handle an incoming `InternalRequest`.
    */
-  async handle(
-    request: Request | InternalRequest,
-    context: Perdition.Context = undefined as any
-  ): Promise<InternalResponse> {
-    const internalRequest = 'cookies' in request ? request : await toInternalRequest(request)
-
+  async handle(internalRequest: TRequest): Promise<InternalResponse<TUser>> {
     const internalResponse = await this
-      .generateInternalResponse(internalRequest, context)
+      .generateInternalResponse(internalRequest)
       .catch(error => ({ error }))
 
     return internalResponse
@@ -141,10 +140,7 @@ export class Auth {
   /**
    * Generate an `InternalResponse` from an `InternalRequest`.
    */
-  async generateInternalResponse(
-    internalRequest: InternalRequest,
-    context: Perdition.Context = undefined as any
-  ): Promise<InternalResponse> {
+  async generateInternalResponse(internalRequest: TRequest): Promise<InternalResponse<TUser>> {
     const { url, request } = internalRequest
 
     /**
@@ -156,16 +152,16 @@ export class Auth {
      * 2.1. Framework handles static auth pages.
      */
     if (url.pathname === this.pages.logout.route && this.pages.logout.methods.includes(request.method))
-      return await this.callbacks.logout?.(internalRequest, context) ?? this.session.logout(request)
+      return await this.callbacks.logout?.(internalRequest) ?? this.session.logout(request)
 
     if (url.pathname === this.pages.update.route && this.pages.update.methods.includes(request.method))
-      return await this.callbacks.update?.(internalRequest, context) ?? sessionResponse
+      return await this.callbacks.update?.(internalRequest) ?? sessionResponse
 
     if (url.pathname === this.pages.forgot.route && this.pages.forgot.methods.includes(request.method))
-      return await this.callbacks.forgot?.(internalRequest, context) ?? sessionResponse
+      return await this.callbacks.forgot?.(internalRequest) ?? sessionResponse
 
     if (url.pathname === this.pages.reset.route && this.pages.reset.methods.includes(request.method))
-      return await this.callbacks.reset?.(internalRequest, context) ?? sessionResponse
+      return await this.callbacks.reset?.(internalRequest) ?? sessionResponse
 
     const loginHandler = this.routes.login.get(url.pathname)
     const callbackHandler = this.routes.callback.get(url.pathname)
@@ -212,6 +208,13 @@ export class Auth {
 /**
  * Create an auth instance.
  */
-export function AponiaAuth(config: AuthConfig) {
+export function AponiaAuth<
+  TUser,
+  TSession = TUser,
+  TRefresh = undefined,
+  TRequest extends InternalRequest = InternalRequest
+>(
+  config: AuthConfig<TUser, TSession, TRefresh, TRequest>
+) {
   return new Auth(config)
 }

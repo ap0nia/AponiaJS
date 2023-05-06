@@ -134,10 +134,16 @@ importers:
       aponia:
         specifier: '*'
         version: link:../../core
+      cookie:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@sveltejs/kit':
         specifier: ^1.15.5
         version: 1.15.5(svelte@3.58.0)(vite@4.2.1)
+      '@types/cookie':
+        specifier: ^0.5.1
+        version: 0.5.1
       '@types/node':
         specifier: ^18.15.11
         version: 18.15.11

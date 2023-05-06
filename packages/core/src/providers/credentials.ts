@@ -5,25 +5,26 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
 /**
  * Internal configuration for the credentials provider.
  */
-export interface CredentialsConfig  {
-  onAuth?: (internalRequest: InternalRequest) => Awaitable<InternalResponse | Nullish>
+export interface CredentialsConfig<TUser, TRequest extends InternalRequest = InternalRequest> {
+  onAuth?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
   pages: ProviderPages
 }
 
 /**
  * User configuration for the credentials provider.
  */
-export interface CredentialsUserConfig extends DeepPartial<CredentialsConfig> {}
+export interface CredentialsUserConfig<TUser, TRequest extends InternalRequest = InternalRequest> 
+  extends DeepPartial<CredentialsConfig<TUser, TRequest>> {}
 
 /**
  * Credentials provider.
  */
-export class CredentialsProvider {
+export class CredentialsProvider<TUser, TRequest extends InternalRequest = InternalRequest> {
   id = 'credentials' as const
 
-  config: CredentialsConfig
+  config: CredentialsConfig<TUser, TRequest>
 
-  constructor(config: CredentialsUserConfig) {
+  constructor(config: CredentialsUserConfig<TUser, TRequest>) {
     this.config = {
       ...config,
       pages: {
@@ -48,11 +49,11 @@ export class CredentialsProvider {
     return this
   }
 
-  async login(request: InternalRequest): Promise<InternalResponse> {
+  async login(request: TRequest): Promise<InternalResponse<TUser>> {
     return (await this.config.onAuth?.(request)) ?? {}
   }
 
-  async callback(request: InternalRequest): Promise<InternalResponse> {
+  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
     return (await this.config.onAuth?.(request)) ?? {}
   }
 }
@@ -60,6 +61,6 @@ export class CredentialsProvider {
 /**
  * Create a credentials provider.
  */
-export function Credentials(config: CredentialsUserConfig) {
+export function Credentials<TUser>(config: CredentialsUserConfig<TUser>) {
   return new CredentialsProvider(config)
 }
