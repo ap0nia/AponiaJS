@@ -2,11 +2,19 @@ import type { Auth } from 'aponia'
 import { RequestEvent, redirect } from '@sveltejs/kit'
 import type { Handle } from '@sveltejs/kit'
 
+const defaultLocalsUserKey = 'user'
+
 const defaultLocalsAuthKey = 'aponia-auth'
 
 export interface Options {
   /**
-   * Which key to store the internally generated auth response in locals if debugging.
+   * Key to store the user in locals.
+   * User will only be defined if the session was refreshed or provider action occurred during the current request.
+   */
+  localsUserKey?: keyof App.Locals
+
+  /**
+   * Key to store the internally generated auth response in locals if debugging.
    */
   localsAuthKey?: keyof App.Locals
 
@@ -23,7 +31,10 @@ export function createAuthHandle<TUser, TSession, TRefresh>(
   auth: Auth<TUser, TSession, TRefresh>,
   options: Options = {}
 ) {
-  const getUser = async (event: RequestEvent) => {
+  const getUser = async (event: RequestEvent): Promise<TUser | null> => {
+    const initialUser = (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey]
+    if (initialUser) return initialUser
+
     const accessToken = event.cookies.get(auth.session.config.cookies.accessToken.name)
 
     const { access } = await auth.session.decodeTokens({ accessToken })
@@ -47,6 +58,8 @@ export function createAuthHandle<TUser, TSession, TRefresh>(
     if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
       throw redirect(internalResponse.status, internalResponse.redirect)
     }
+
+    (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey] = internalResponse.user
 
     if (options.debug) {
       (event.locals as any)[options.localsAuthKey ?? defaultLocalsAuthKey] = internalResponse
