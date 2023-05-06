@@ -42,7 +42,7 @@ export const LinkedInOptions: OAuthDefaultConfig<LinkedInProfile> = {
         if (!tokens.access_token) throw new TypeError("No access token")
 
         const profile = await oauth
-          .userInfoRequest(provider.authorizationServer, provider.client, tokens.access_token)
+          .userInfoRequest(provider.authorizationServer, provider.config.client, tokens.access_token)
           .then(response => response.json())
 
         const email: LinkedInProfile['profilePicture']['displayImage~'] = await fetch(

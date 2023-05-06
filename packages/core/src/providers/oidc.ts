@@ -56,7 +56,7 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile> extends
  */
 export interface OIDCDefaultConfig<TProfile> extends 
   Pick<OIDCConfig<TProfile>, 'id' | 'issuer'>,
-  Omit<OIDCUserConfig<TProfile>, 'id' | 'issuer'> {}
+  Omit<OIDCUserConfig<TProfile>, 'id' | 'issuer' | 'clientId' | 'clientSecret'> {}
 
 /**
  * OIDC provider.

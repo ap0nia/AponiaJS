@@ -57,7 +57,7 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile> extends
  */
 export interface OAuthDefaultConfig<TProfile> extends 
   Pick<OAuthConfig<TProfile>, 'id' | 'endpoints'>,
-  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints'> {}
+  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
 
 /**
  * OAuth provider.

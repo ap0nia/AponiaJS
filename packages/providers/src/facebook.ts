@@ -26,7 +26,7 @@ export const FacebookOptions: OAuthDefaultConfig<FacebookProfile> = {
       // https://developers.facebook.com/docs/graph-api/reference/user/#fields
       url: "https://graph.facebook.com/me?fields=id,name,email,picture",
       request: async ({ tokens, provider }) => {
-        const url = new URL(provider.endpoints.userinfo.url)
+        const url = new URL(provider.config.endpoints.userinfo.url)
         return await fetch(url, {
           headers: { Authorization: `Bearer ${tokens.access_token}` },
         }).then(async (res) => await res.json())

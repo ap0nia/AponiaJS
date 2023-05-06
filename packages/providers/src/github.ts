@@ -69,7 +69,7 @@ export const GitHubOptions: OAuthDefaultConfig<GitHubProfile> = {
     userinfo: {
       url: "https://api.github.com/user",
       request: async ({ tokens, provider }) => {
-        const url = new URL(provider.endpoints.userinfo.url)
+        const url = new URL(provider.config.endpoints.userinfo.url)
         const profile = await fetch(url, {
           headers: { Authorization: `Bearer ${tokens.access_token}`, 'User-Agent': 'authjs' },
         }).then(async (res) => await res.json())

@@ -138,8 +138,14 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
   async generateInternalResponse(internalRequest: InternalRequest): Promise<InternalResponse> {
     const { url, request } = internalRequest
 
+    /**
+     * 1. Refresh the user's session if necessary and possible.
+     */
     const sessionResponse = await this.session.handleRequest(internalRequest)
 
+    /**
+     * 2.1. Framework handles static auth pages.
+     */
     if (url.pathname === this.pages.logout.route && this.pages.logout.methods.includes(request.method))
       return await this.callbacks.logout?.(internalRequest) ?? this.session.logout(request)
 
@@ -155,16 +161,24 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
     const loginHandler = this.routes.login.get(url.pathname)
     const callbackHandler = this.routes.callback.get(url.pathname)
 
-    const providerResponse = loginHandler && loginHandler.config.pages.login.methods.includes(request.method)
+    if (!loginHandler && !callbackHandler) return {}
+
+    /**
+     * 2.2. Providers handle login and callback pages.
+     */
+    const providerResponse = 
+        loginHandler && loginHandler.config.pages.login.methods.includes(request.method)
       ? await loginHandler.login(internalRequest)
       : callbackHandler && callbackHandler.config.pages.callback.methods.includes(request.method)
       ? await callbackHandler.callback(internalRequest)
       : {}
 
+    /**
+     * 3. The provider logged in a user if `user` is defined. Create a new session for the user.
+     */
     if (providerResponse.user) {
       const sessionTokens = await this.session.config.createSession?.(providerResponse.user)
       providerResponse.user = sessionTokens?.user
-
       if (sessionTokens) {
         providerResponse.cookies ??= []
         providerResponse.cookies.push(...await this.session.createCookies(sessionTokens))
@@ -176,6 +190,10 @@ export class Auth<TUser, TSession, TRefresh = undefined> {
       providerResponse.cookies.push(...sessionResponse.cookies)
     }
 
+    /**
+     * User may be defined as a result of a provider login, or a session refresh. 
+     * Otherwise call `session.getUserFromRequest(request)` to get the user for the current request.
+     */
     providerResponse.user ||= sessionResponse.user
 
     return providerResponse

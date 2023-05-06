@@ -154,8 +154,20 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
   }
 
   /**
-   * Handle a request.
-   * Checks if the user is logged in, and refreshes the session if necessary.
+   * Get the user from a request.
+   */
+  async getUserFromRequest(request: InternalRequest): Promise<TUser | Nullish> {
+    const accessToken = request.cookies[this.config.cookies.accessToken.name]
+
+    const { access } = await this.decodeTokens({ accessToken })
+    if (!access) return null
+
+    const user = await this.config.getUserFromSession(access)
+    return user
+  }
+
+  /**
+   * Handle a request by refreshing the user's session if necessary and possible.
    */
   async handleRequest(request: InternalRequest): Promise<InternalResponse<TUser>> {
     const accessToken = request.cookies[this.config.cookies.accessToken.name]
@@ -163,7 +175,7 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
 
     // User is logged in or logged out and doesn't need to be refreshed.
 
-    if (accessToken || (!accessToken && !refreshToken)) return { session: accessToken }
+    if (accessToken || (!accessToken && !refreshToken)) return {}
 
     // User is logged out, but can be refreshed.
 
@@ -177,6 +189,9 @@ export class SessionManager<TUser, TSession = TUser, TRefresh = undefined> {
     }
   }
 
+  /**
+   * Log a user out.
+   */
   async logout(request: Request): Promise<InternalResponse<TUser>> {
     const cookies = parse(request.headers.get("cookie") ?? "")
 
