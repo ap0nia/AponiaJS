@@ -1,6 +1,6 @@
 import { parse } from 'cookie'
 import type { Auth, InternalRequest } from 'aponia'
-import { redirect } from '@sveltejs/kit'
+import { redirect, error } from '@sveltejs/kit'
 import type { Handle, RequestEvent } from '@sveltejs/kit'
 
 const defaultLocalsUserKey = 'user'
@@ -64,6 +64,10 @@ export function createAuthHelpers<
 
     if (options.debug) {
       (event.locals as any)[localsAuthKey] = internalResponse
+    }
+
+    if (internalResponse.error) {
+      throw error(internalResponse.status ?? 404, internalResponse.error)
     }
 
     return await resolve(event)
