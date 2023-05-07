@@ -43,9 +43,34 @@ export function createAuthHelpers<
   TSession = TUser,
   TRefresh = undefined,
   TRequest extends InternalRequest = InternalRequest
->(auth: Auth<TUser, TSession, TRefresh, TRequest>, options: Options<TRequest>) {
+>(auth: Auth<TUser, TSession, TRefresh, TRequest>, options: Options<TRequest> = {} as any) {
+  const localsUserKey = options.localsUserKey ?? defaultLocalsUserKey
+  const localsAuthKey = options.localsAuthKey ?? defaultLocalsAuthKey
+
+  const handle: Handle = async ({ event, resolve }) => {
+    const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
+
+    const internalResponse = await auth.handle(toInternalRequest(event) as TRequest)
+
+    internalResponse.cookies?.forEach((cookie) => {
+      event.cookies.set(cookie.name, cookie.value, cookie.options)
+    })
+
+    if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
+      throw redirect(internalResponse.status, internalResponse.redirect)
+    }
+
+    (event.locals as any)[localsUserKey] = internalResponse.user
+
+    if (options.debug) {
+      (event.locals as any)[localsAuthKey] = internalResponse
+    }
+
+    return await resolve(event)
+  }
+
   const getUser = async (event: RequestEvent): Promise<TUser | null> => {
-    const initialUser = (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey]
+    const initialUser = (event.locals as any)[localsUserKey]
     if (initialUser) return initialUser
 
     const accessToken = event.cookies.get(auth.session.config.cookies.accessToken.name)
@@ -59,31 +84,17 @@ export function createAuthHelpers<
     return user
   }
 
-  const handle: Handle = async ({ event, resolve }) => {
-    const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
+  return { 
+    /**
+     * SvelteKit `handle` function for hooks.server.ts .
+     */
+    handle,
 
-    const internalResponse = await auth.handle(toInternalRequest(event) as TRequest)
-
-    if (internalResponse.cookies != null) {
-      internalResponse.cookies.forEach((cookie) => {
-        event.cookies.set(cookie.name, cookie.value, cookie.options)
-      })
-    }
-
-    if (internalResponse.redirect != null && validRedirect(internalResponse.status)) {
-      throw redirect(internalResponse.status, internalResponse.redirect)
-    }
-
-    (event.locals as any)[options.localsUserKey ?? defaultLocalsUserKey] = internalResponse.user
-
-    if (options.debug) {
-      (event.locals as any)[options.localsAuthKey ?? defaultLocalsAuthKey] = internalResponse
-    }
-
-    return await resolve(event)
+    /**
+     * Lazily decode the user from `event.locals`
+     */
+    getUser 
   }
-
-  return { handle, getUser }
 }
 
 export default createAuthHelpers
