@@ -9,12 +9,7 @@ const defaultLocalsAuthKey = 'aponia-auth'
 
 export interface SvelteInternalRequest extends InternalRequest, Omit<RequestEvent, 'cookies'> {}
 
-export interface Options<T extends InternalRequest = InternalRequest> {
-  /**
-   * Control what kind of request is passed to the auth library.
-   */
-  toInternalRequest: (requestEvent: RequestEvent) => T
-
+export type Options<T extends InternalRequest = InternalRequest> = {
   /**
    * Key to store the user in locals.
    * User will only be defined if the session was refreshed or provider action occurred during the current request.
@@ -30,10 +25,18 @@ export interface Options<T extends InternalRequest = InternalRequest> {
    * Whether to enable debugging.
    */
   debug?: boolean
-}
+} & (
+  T extends SvelteInternalRequest 
+  ? { toInternalRequest?: (requestEvent: RequestEvent) => T } 
+  : { toInternalRequest: (requestEvent: RequestEvent) => T }
+)
 
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status <= 308
+
+export function defaultToInternalRequest(event: RequestEvent): SvelteInternalRequest {
+  return { ...event, cookies: parse(event.request.headers.get('cookie') ?? '') }
+}
 
 export function createAuthHelpers<
   TUser,
@@ -57,7 +60,9 @@ export function createAuthHelpers<
   }
 
   const handle: Handle = async ({ event, resolve }) => {
-    const internalResponse = await auth.handle(options.toInternalRequest(event))
+    const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
+
+    const internalResponse = await auth.handle(toInternalRequest(event) as TRequest)
 
     if (internalResponse.cookies != null) {
       internalResponse.cookies.forEach((cookie) => {
@@ -79,10 +84,6 @@ export function createAuthHelpers<
   }
 
   return { handle, getUser }
-}
-
-export function defaultToInternalRequest(event: RequestEvent): SvelteInternalRequest {
-  return { ...event, cookies: parse(event.request.headers.get('cookie') ?? '') }
 }
 
 export default createAuthHelpers
