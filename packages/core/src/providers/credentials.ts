@@ -35,7 +35,7 @@ export class CredentialsProvider<TUser, TRequest extends InternalRequest = Inter
         },
         callback: {
           route: config.pages?.callback?.route ?? `/auth/register/${this.id}`,
-          methods: config.pages?.callback?.methods ?? ['GET'],
+          methods: config.pages?.callback?.methods ?? ['POST'],
           redirect: config.pages?.callback?.redirect ?? '/',
         }
       }
