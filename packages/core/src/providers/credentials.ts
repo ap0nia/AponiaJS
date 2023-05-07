@@ -6,7 +6,8 @@ import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js
  * Internal configuration for the credentials provider.
  */
 export interface CredentialsConfig<TUser, TRequest extends InternalRequest = InternalRequest> {
-  onAuth?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
+  onLogin?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
+  onRegister?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
   pages: ProviderPages
 }
 
@@ -33,7 +34,7 @@ export class CredentialsProvider<TUser, TRequest extends InternalRequest = Inter
           methods: config.pages?.login?.methods ?? ['POST'],
         },
         callback: {
-          route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
+          route: config.pages?.callback?.route ?? `/auth/register/${this.id}`,
           methods: config.pages?.callback?.methods ?? ['GET'],
           redirect: config.pages?.callback?.redirect ?? '/',
         }
@@ -50,11 +51,11 @@ export class CredentialsProvider<TUser, TRequest extends InternalRequest = Inter
   }
 
   async login(request: TRequest): Promise<InternalResponse<TUser>> {
-    return (await this.config.onAuth?.(request)) ?? {}
+    return (await this.config.onLogin?.(request)) ?? {}
   }
 
   async callback(request: TRequest): Promise<InternalResponse<TUser>> {
-    return (await this.config.onAuth?.(request)) ?? {}
+    return (await this.config.onRegister?.(request)) ?? {}
   }
 }
 
