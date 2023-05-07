@@ -43,13 +43,13 @@ interface Pages {
 export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   secret: string
 
-  pages: Partial<Pages>
+  pages: Pages
 
   jwt: Required<Omit<JWTOptions, 'maxAge'>>
 
   cookies: CookiesOptions
 
-  maxAge: Partial<TokenMaxAge>
+  maxAge: TokenMaxAge
 
   useSecureCookies?: boolean
 
@@ -90,7 +90,9 @@ export class SessionManager<
     this.config = {
       ...config,
       secret: config.secret,
-      pages: config.pages ?? {},
+      pages: {
+        logoutRedirect: config.pages?.logoutRedirect ?? '/login',
+      },
       jwt: {
         ...config.jwt,
         secret: config.secret,
