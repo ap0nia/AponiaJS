@@ -91,7 +91,7 @@ export class SessionManager<
       ...config,
       secret: config.secret,
       pages: {
-        logoutRedirect: config.pages?.logoutRedirect ?? '/login',
+        logoutRedirect: config.pages?.logoutRedirect ?? '/auth/login',
       },
       jwt: {
         ...config.jwt,
