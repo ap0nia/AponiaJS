@@ -30,4 +30,9 @@ export interface InternalResponse<T = any> {
    * Any error that occurred.
    */
   error?: any
+
+  /**
+   * Response body.
+   */
+  body?: any
 }
