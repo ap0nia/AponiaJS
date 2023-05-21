@@ -71,7 +71,14 @@ export function createAuthHelpers<
     }
 
     if (internalResponse.body) {
-      return json(internalResponse.body, internalResponse)
+      const response = json(internalResponse.body, internalResponse)
+      internalResponse.cookies?.forEach((cookie) => {
+        response.headers.append(
+          'Set-Cookie',
+          event.cookies.serialize(cookie.name, cookie.value, cookie.options)
+        )
+      })
+      return response
     }
 
     return await resolve(event)
