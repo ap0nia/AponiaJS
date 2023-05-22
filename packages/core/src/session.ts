@@ -49,6 +49,8 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
 
   cookies: CookiesOptions
 
+  multiplier?: number
+
   maxAge: TokenMaxAge
 
   useSecureCookies?: boolean
@@ -87,6 +89,8 @@ export class SessionManager<
   config: SessionConfig<TUser, TSession, TRefresh>
 
   constructor(config: SessionUserConfig<TUser, TSession, TRefresh>) {
+    const cookies = createCookiesOptions(config.useSecureCookies)
+
     this.config = {
       ...config,
       secret: config.secret,
@@ -99,7 +103,7 @@ export class SessionManager<
         decode: config.jwt?.decode ?? decode,
         encode: config.jwt?.encode ?? encode,
       },
-      cookies: createCookiesOptions(config.useSecureCookies),
+      cookies,
       maxAge: { 
         accessToken: config.maxAge?.accessToken ?? DefaultAccessTokenMaxAge,
         refreshToken: config.maxAge?.refreshToken ?? DefaultRefreshTokenMaxAge,

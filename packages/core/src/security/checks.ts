@@ -95,7 +95,7 @@ export const nonce = {
       'nonce',
       config,
       value,
-      { ...config.jwt, maxAge: NONCE_MAX_AGE },
+      { ...config.jwt, maxAge: NONCE_MAX_AGE }
     )
     return [ value, cookie ] as const
   },
@@ -122,7 +122,7 @@ export const nonce = {
 }
 
 async function signCookie(
-  key: keyof AnyOAuthConfig['cookies'],
+  key: Exclude<keyof AnyOAuthConfig['cookies'], 'multiplier'>,
   config: AnyOAuthConfig,
   value: string,
   jwt: JWTOptions
@@ -133,7 +133,7 @@ async function signCookie(
     value: await e({ ...jwt, token: { value } }),
     options: { 
       ...config.cookies[key].options,
-      expires: new Date(Date.now() + (jwt.maxAge ?? 60) * 1000)
+      maxAge: jwt.maxAge ?? 60,
     },
   }
   return signedCookie

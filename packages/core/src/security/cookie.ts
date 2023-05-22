@@ -31,7 +31,7 @@ const fifteenMinutesInSeconds = 60 * 15
 export function createCookiesOptions(
   useSecureCookies = false,
   cookieName = defaultCookieName,
-  securePrefix = defaultSecurePrefix
+  securePrefix = defaultSecurePrefix,
 ): CookiesOptions {
   const cookiePrefix = useSecureCookies ? securePrefix : ""
   return {

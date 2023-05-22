@@ -129,6 +129,34 @@ importers:
         specifier: ^5.0.4
         version: 5.0.4
 
+  packages/integrations/express:
+    dependencies:
+      aponia:
+        specifier: '*'
+        version: link:../../core
+      cookie:
+        specifier: ^0.5.0
+        version: 0.5.0
+      express:
+        specifier: ^4.18.2
+        version: 4.18.2
+    devDependencies:
+      '@types/cookie':
+        specifier: ^0.5.1
+        version: 0.5.1
+      '@types/express':
+        specifier: ^4.17.17
+        version: 4.17.17
+      '@types/node':
+        specifier: ^18.15.11
+        version: 18.15.11
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.0
+      typescript:
+        specifier: ^5.0.4
+        version: 5.0.4
+
   packages/integrations/sveltekit:
     dependencies:
       aponia:
