@@ -1,12 +1,19 @@
-import { type Auth, type InternalRequest } from 'aponia'
-import type { Request, Response, NextFunction } from 'express'
 import * as cookie from 'cookie'
+import type { Auth, InternalRequest } from 'aponia'
+import type { Request, Response, NextFunction } from 'express'
+
+const defaultLocalsGetUserKey = 'getUser'
 
 const defaultLocalsUserKey = 'user'
 
 const defaultLocalsAuthKey = 'aponia-auth'
 
 export type Options<T extends InternalRequest = InternalRequest> = {
+  /**
+   * 
+   */
+  localsGetUserKey?: string
+
   /**
    * Key to store the user in locals.
    * User will only be defined if the session was refreshed or provider action occurred during the current request.
@@ -50,39 +57,11 @@ export function createAuthMiddleware<
   TRefresh = undefined,
   TRequest extends InternalRequest = InternalRequest
 >(auth: Auth<TUser, TSession, TRefresh, TRequest>, options: Options<TRequest> = {} as any) {
+  const localsGetUserKey = options.localsGetUserKey ?? defaultLocalsGetUserKey
   const localsUserKey = options.localsUserKey ?? defaultLocalsUserKey
   const localsAuthKey = options.localsAuthKey ?? defaultLocalsAuthKey
 
   const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
-
-  const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    const internalResponse = await auth.handle(toInternalRequest(req) as TRequest)
-
-    if (internalResponse.cookies?.length) {
-      internalResponse.cookies.forEach((cookie) => {
-        if (cookie.options?.maxAge) {
-          cookie.options.maxAge *= 1000
-        }
-        res.cookie(cookie.name, cookie.value, cookie.options ?? {})
-      })
-    }
-
-    (req as any)[localsUserKey] = internalResponse.user
-
-    if (options.debug) {
-      (req as any)[localsAuthKey] = internalResponse
-    }
-
-    if (internalResponse.redirect && internalResponse.status) {
-      res.redirect(internalResponse.status, internalResponse.redirect)
-    }
-
-    if (internalResponse.body) {
-      res.json(internalResponse.body)
-    }
-
-    return next()
-  }
 
   const getUser = async (req: Request) => {
     const initialUser = (req as any)[localsUserKey]
@@ -99,5 +78,35 @@ export function createAuthMiddleware<
     return user
   }
 
-  return { authMiddleware, getUser }
+  const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    const internalResponse = await auth.handle(toInternalRequest(req) as TRequest)
+
+    ; (req as any)[localsUserKey] = internalResponse.user
+    ; (req as any)[localsGetUserKey] = () => getUser(req)
+
+    if (internalResponse.cookies?.length) {
+      internalResponse.cookies.forEach((cookie) => {
+        if (cookie.options?.maxAge) {
+          cookie.options.maxAge *= 1000
+        }
+        res.cookie(cookie.name, cookie.value, cookie.options ?? {})
+      })
+    }
+
+    if (options.debug) {
+      (req as any)[localsAuthKey] = internalResponse
+    }
+
+    if (internalResponse.redirect && internalResponse.status) {
+      res.redirect(internalResponse.status, internalResponse.redirect)
+    }
+
+    if (internalResponse.body) {
+      res.json(internalResponse.body)
+    }
+
+    return next()
+  }
+
+  return authMiddleware
 }

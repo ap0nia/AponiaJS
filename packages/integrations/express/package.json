@@ -1,6 +1,6 @@
 {
   "name": "@aponia/integrations-express",
-  "version": "0.1.50",
+  "version": "0.1.51",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
