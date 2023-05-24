@@ -28,7 +28,8 @@ export type Options<T extends InternalRequest = InternalRequest> = {
 
 
 export function defaultToInternalRequest(req: Request): InternalRequest {
-  const request = new Request(`${req.protocol}://${req.get('host')}${req.originalUrl}`, {
+  const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`)
+  const request = new Request(url, {
     method: req.method,
     headers: Object.entries(req.headers).map(([key, value]) =>
       [key.toLowerCase(), Array.isArray(value) ? value.join(', ') : (value ?? '')],
@@ -38,7 +39,7 @@ export function defaultToInternalRequest(req: Request): InternalRequest {
 
   return {
     request,
-    url: new URL(req.url),
+    url,
     cookies: cookie.parse(req.headers.cookie ?? ''),
   }
 }
