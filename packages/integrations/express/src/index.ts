@@ -28,7 +28,7 @@ export type Options<T extends InternalRequest = InternalRequest> = {
 
 
 export function defaultToInternalRequest(req: Request): InternalRequest {
-  const request = new Request(req.url, {
+  const request = new Request(`${req.protocol}://${req.get('host')}${req.originalUrl}`, {
     method: req.method,
     headers: Object.entries(req.headers).map(([key, value]) =>
       [key.toLowerCase(), Array.isArray(value) ? value.join(', ') : (value ?? '')]
