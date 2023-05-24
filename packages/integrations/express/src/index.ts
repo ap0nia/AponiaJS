@@ -31,9 +31,9 @@ export function defaultToInternalRequest(req: Request): InternalRequest {
   const request = new Request(`${req.protocol}://${req.get('host')}${req.originalUrl}`, {
     method: req.method,
     headers: Object.entries(req.headers).map(([key, value]) =>
-      [key.toLowerCase(), Array.isArray(value) ? value.join(', ') : (value ?? '')]
+      [key.toLowerCase(), Array.isArray(value) ? value.join(', ') : (value ?? '')],
     ),
-    body: req.body,
+    ...(req.method !== 'GET' && req.method !== 'HEAD' && { body: req.body }),
   })
 
   return {
@@ -43,7 +43,7 @@ export function defaultToInternalRequest(req: Request): InternalRequest {
   }
 }
 
-export function createAuthHelpers<
+export function createAuthMiddleware<
   TUser,
   TSession = TUser,
   TRefresh = undefined,
@@ -54,7 +54,7 @@ export function createAuthHelpers<
 
   const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
 
-  const handler = async (req: Request, res: Response, next: NextFunction) => {
+  const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const internalResponse = await auth.handle(toInternalRequest(req) as TRequest)
 
     if (internalResponse.cookies?.length) {
@@ -83,5 +83,20 @@ export function createAuthHelpers<
     return next()
   }
 
-  return handler
+  const getUser = async (req: Request) => {
+    const initialUser = (req as any)[localsUserKey]
+    if (initialUser) return initialUser
+
+    const accessToken = req.cookies[auth.session.config.cookies.accessToken.name]
+
+    const { access } = await auth.session.decodeTokens({ accessToken })
+    if (!access) return null
+
+    const user = await auth.session.config.getUserFromSession(access)
+    if (!user) return null
+
+    return user
+  }
+
+  return { authMiddleware, getUser }
 }
