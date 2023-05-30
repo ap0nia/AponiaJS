@@ -60,7 +60,7 @@ export interface SessionConfig<TUser, TSession = TUser, TRefresh = undefined> {
   getUserFromSession: (session: TSession) => Awaitable<TUser | Nullish>;
 
   handleRefresh?: (
-    tokens: { accessToken?: TSession | Nullish, refreshToken?: TRefresh | Nullish  }
+    tokens: { accessToken?: TSession | Nullish, refreshToken: TRefresh  }
   ) => Awaitable<NewSession<TUser, TSession, TRefresh> | Nullish>;
 
   onInvalidateSession?: (
@@ -191,6 +191,8 @@ export class SessionManager<
     // User is logged out, but can be refreshed.
 
     const { access, refresh } = await this.decodeTokens({ accessToken, refreshToken })
+
+    if (!refresh) return {}
 
     const refreshedTokens = await this.config.handleRefresh?.({ accessToken: access, refreshToken: refresh })
 
