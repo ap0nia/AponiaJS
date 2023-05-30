@@ -1,6 +1,6 @@
 {
   "name": "aponia",
-  "version": "0.1.47",
+  "version": "0.1.51",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",

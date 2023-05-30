@@ -38,7 +38,7 @@ export interface OIDCConfig<TProfile, TUser = TProfile> {
   onAuth: (
     user: TProfile,
     context: OIDCProvider<TProfile, TUser>,
-  ) => Awaitable<InternalResponse | Nullish> | Nullish
+  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
 }
 
 /**
