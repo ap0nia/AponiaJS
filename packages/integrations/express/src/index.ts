@@ -98,6 +98,7 @@ export function createAuthMiddleware<
     }
 
     if (internalResponse.error) {
+      console.log(internalResponse)
       res.status(internalResponse.status ?? 500).json(internalResponse.error)
     }
 
