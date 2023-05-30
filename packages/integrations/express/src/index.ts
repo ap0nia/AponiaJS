@@ -97,6 +97,10 @@ export function createAuthMiddleware<
       (req as any)[localsAuthKey] = internalResponse
     }
 
+    if (internalResponse.error) {
+      res.status(internalResponse.status ?? 500).json(internalResponse.error)
+    }
+
     if (internalResponse.redirect && internalResponse.status) {
       res.redirect(internalResponse.status, internalResponse.redirect)
     }
