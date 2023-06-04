@@ -10,13 +10,28 @@
     "src",
     "dist"
   ],
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.cjs",
+      "default": "./dist/src/index.js"
+    },
+    "./providers/*": {
+      "types": "./dist/providers/*.d.ts",
+      "require": "./dist/providers/*.cjs",
+      "default": "./dist/providers/*.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/src/index.d.ts"
+      ],
+      "./providers/*": [
+        "./dist/providers/*.d.ts"
+      ]
     }
   },
   "publishConfig": {
@@ -26,12 +41,12 @@
     "@panva/hkdf": "^1.0.4",
     "cookie": "^0.5.0",
     "jose": "^4.13.1",
-    "oauth4webapi": "^2.2.0"
+    "oauth4webapi": "^2.2.0",
+    "rimraf": "^5.0.0"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.1",
     "@types/node": "^18.15.11",
-    "rimraf": "^5.0.0",
     "typescript": "^5.0.4"
   }
 }
