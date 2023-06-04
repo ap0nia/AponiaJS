@@ -1,4 +1,8 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
 
 importers:
 
@@ -72,6 +76,9 @@ importers:
       aponia:
         specifier: '*'
         version: link:../../packages/core
+      aponia-v2:
+        specifier: workspace:^
+        version: link:../../v2/core
       better-sqlite3:
         specifier: ^8.3.0
         version: 8.3.0
@@ -197,6 +204,34 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
     devDependencies:
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.0
+      typescript:
+        specifier: ^5.0.4
+        version: 5.0.4
+
+  v2/core:
+    dependencies:
+      '@panva/hkdf':
+        specifier: ^1.0.4
+        version: 1.0.4
+      cookie:
+        specifier: ^0.5.0
+        version: 0.5.0
+      jose:
+        specifier: ^4.13.1
+        version: 4.13.1
+      oauth4webapi:
+        specifier: ^2.2.0
+        version: 2.2.0
+    devDependencies:
+      '@types/cookie':
+        specifier: ^0.5.1
+        version: 0.5.1
+      '@types/node':
+        specifier: ^18.15.11
+        version: 18.15.11
       rimraf:
         specifier: ^5.0.0
         version: 5.0.0

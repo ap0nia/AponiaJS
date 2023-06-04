@@ -6,6 +6,10 @@ import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT
 
 type User = { id: number }
 
+import { x } from 'aponia-v2'
+
+x().augmented
+
 type AponiaSession = User
 
 type Refresh = User
