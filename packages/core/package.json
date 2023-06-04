@@ -1,6 +1,6 @@
 {
   "name": "aponia",
-  "version": "0.1.53",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -10,13 +10,52 @@
     "src",
     "dist"
   ],
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.cjs",
+      "default": "./dist/src/index.js"
+    },
+    "./session": {
+      "types": "./dist/src/session.d.ts",
+      "require": "./dist/src/session.cjs",
+      "default": "./dist/src/session.js"
+    },
+    "./providers/credentials": {
+      "types": "./dist/src/providers/credentials.d.ts",
+      "require": "./dist/src/providers/credentials.cjs",
+      "default": "./dist/src/providers/credentials.js"
+    },
+    "./providers/email": {
+      "types": "./dist/src/providers/email.d.ts",
+      "require": "./dist/src/providers/email.cjs",
+      "default": "./dist/src/providers/email.js"
+    },
+    "./providers/*": {
+      "types": "./dist/providers/*.d.ts",
+      "require": "./dist/providers/*.cjs",
+      "default": "./dist/providers/*.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/src/index.d.ts"
+      ],
+      "session": [
+        "./dist/src/session.d.ts"
+      ],
+      "providers/credentials": [
+        "./dist/src/providers/credentials.d.ts"
+      ],
+      "providers/email": [
+        "./dist/src/providers/email.d.ts"
+      ],
+      "providers/*": [
+        "./dist/providers/*.d.ts"
+      ]
     }
   },
   "publishConfig": {
@@ -25,13 +64,14 @@
   "dependencies": {
     "@panva/hkdf": "^1.0.4",
     "cookie": "^0.5.0",
+    "defu": "^6.1.2",
     "jose": "^4.13.1",
-    "oauth4webapi": "^2.2.0"
+    "oauth4webapi": "^2.2.0",
+    "rimraf": "^5.0.0"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.1",
     "@types/node": "^18.15.11",
-    "rimraf": "^5.0.0",
     "typescript": "^5.0.4"
   }
 }

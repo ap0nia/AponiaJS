@@ -1,5 +1,11 @@
 import type { CookieSerializeOptions } from "cookie"
 
+const defaultCookieName = 'aponia-auth'
+
+const defaultSecurePrefix = '__Secure-'
+
+const fifteenMinutesInSeconds = 60 * 15
+
 export interface Cookie {
   name: string
   value: string
@@ -12,21 +18,14 @@ export interface CookieOption {
 }
 
 export interface CookiesOptions { 
-  callbackUrl: CookieOption
-  csrfToken: CookieOption
-  pkceCodeVerifier: CookieOption
-  state: CookieOption
-  nonce: CookieOption
-  sessionToken: CookieOption
   accessToken: CookieOption
   refreshToken: CookieOption
+  state: CookieOption
+  nonce: CookieOption
+  csrfToken: CookieOption
+  pkceCodeVerifier: CookieOption
+  callbackUrl: CookieOption
 }
-
-const defaultCookieName = 'aponia-auth'
-
-const defaultSecurePrefix = '__Secure-'
-
-const fifteenMinutesInSeconds = 60 * 15
 
 export function createCookiesOptions(
   useSecureCookies = false,
@@ -35,15 +34,6 @@ export function createCookiesOptions(
 ): CookiesOptions {
   const cookiePrefix = useSecureCookies ? securePrefix : ""
   return {
-    sessionToken: {
-      name: `${cookiePrefix}${cookieName}.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: useSecureCookies,
-      },
-    },
     accessToken: {
       name: `${cookiePrefix}${cookieName}.access-token`,
       options: {
@@ -72,8 +62,10 @@ export function createCookiesOptions(
       },
     },
     csrfToken: {
-      // Default to __Host- for CSRF token for additional protection if using useSecureCookies
-      // NB: The `__Host-` prefix is stricter than the `__Secure-` prefix.
+      /**
+       * Default to __Host- for CSRF token for additional protection if using secure cookies.
+       * NB: The `__Host-` prefix is stricter than the `__Secure-` prefix.
+       */
       name: `${useSecureCookies ? "__Host-" : cookiePrefix}${cookieName}.csrf-token`,
       options: {
         httpOnly: true,

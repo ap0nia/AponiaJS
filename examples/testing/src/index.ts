@@ -1,15 +1,15 @@
-import { handle, Callback } from 'aponia-v2'
+import { AponiaSession } from 'aponia/session'
+import { Google } from 'aponia/providers/google'
+import { GitHub } from 'aponia/providers/github'
 
-const callback: Callback = async (req) => {
-  req.augmented
-  return { 
-    user: {
-    } 
-  }
-}
+console.log(Google({ clientId: '', clientSecret: '' }))
+console.log(GitHub({ clientId: 'githubid', clientSecret: 'githubsecret' }))
 
-handle(callback)
+let l: Aponia.User = { id: 1 }
 
-import { google } from 'aponia-v2/providers/google'
+const s = AponiaSession({
+  secret: 'secret!!',
+  createSession(user) {
+  },
+})
 
-google()

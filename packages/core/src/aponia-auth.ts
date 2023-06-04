@@ -1,10 +1,10 @@
-declare namespace AponiaAuth {
+declare namespace Aponia {
   /**
    * The user that can be __identified__ by a session.
    *
    * @example username, email, profile picture, etc.
    */
-  export interface User { id: number }
+  interface User { id: number }
 
   /**
    * The data stored in a JWT, encrypted access token, and then into a cookie.
@@ -16,7 +16,7 @@ declare namespace AponiaAuth {
    * An access token can be the same as the user.
    * Or it may contain a session ID or user ID which is subsequently used to identify the user.
    */
-  export interface AccessToken extends User { }
+  interface AccessToken extends User { }
 
   /**
    * Data that's used to refresh an access token.
@@ -25,12 +25,12 @@ declare namespace AponiaAuth {
    * @example User ID: Look up the user in the database, create new tokens with new expiration dates.
    * @example User: Just create new tokens with new expiration dates.
    */
-  export interface RefreshToken { }
+  interface RefreshToken { }
 
   /**
    * Request object used internally.
    */
-  export interface InternalRequest {
+  interface InternalRequest {
     /**
      * The original request.
      */
@@ -51,11 +51,11 @@ declare namespace AponiaAuth {
    * An internally generated response.
    * Should be handled accordingly depending on the context of the usage.
    */
-  export interface InternalResponse {
+  interface InternalResponse {
     /**
      * The decoded user. 
      */
-    user?: AponiaAuth.User | Nullish
+    user?: Aponia.User | null
 
     /**
      * HTTP status code.

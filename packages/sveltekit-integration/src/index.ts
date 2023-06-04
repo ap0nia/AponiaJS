@@ -1,5 +1,7 @@
+import './types.js'
+
 import { parse } from 'cookie'
-import type { Auth, InternalRequest } from 'aponia'
+import type { Auth } from 'aponia'
 import { redirect, error, json } from '@sveltejs/kit'
 import type { Handle, RequestEvent } from '@sveltejs/kit'
 
@@ -9,11 +11,8 @@ const defaultLocalsUserKey = 'user'
 
 const defaultLocalsAuthKey = 'aponia-auth'
 
-export interface SvelteInternalRequest extends InternalRequest, Omit<RequestEvent, 'cookies'> { }
-
-export type Options<T extends InternalRequest = InternalRequest> = {
+export type Options = {
   /**
-   * 
    */
   localsGetUserKey?: keyof App.Locals
 
@@ -32,52 +31,42 @@ export type Options<T extends InternalRequest = InternalRequest> = {
    * Whether to enable debugging.
    */
   debug?: boolean
-} & (
-    T extends SvelteInternalRequest
-    ? { toInternalRequest?: (requestEvent: RequestEvent) => T }
-    : { toInternalRequest: (requestEvent: RequestEvent) => T }
-  )
+}
 
 const validRedirect = (status?: number): status is Parameters<typeof redirect>[0] =>
   status != null && status >= 300 && status <= 308
 
-export function defaultToInternalRequest(event: RequestEvent): SvelteInternalRequest {
+export function toInternalRequest(event: RequestEvent): Aponia.InternalRequest {
   return { ...event, cookies: parse(event.request.headers.get('cookie') ?? '') }
 }
 
-export function createAuthHelpers<
-  TUser,
-  TSession = TUser,
-  TRefresh = undefined,
-  TRequest extends InternalRequest = InternalRequest
->(auth: Auth<TUser, TSession, TRefresh, TRequest>, options: Options<TRequest> = {} as any) {
+export function createAuthHelpers(auth: Auth, options: Options = {}) {
   const localsGetUserKey = options.localsGetUserKey ?? defaultLocalsGetUserKey
   const localsUserKey = options.localsUserKey ?? defaultLocalsUserKey
   const localsAuthKey = options.localsAuthKey ?? defaultLocalsAuthKey
 
-  const toInternalRequest = options.toInternalRequest ?? defaultToInternalRequest
-
-  const getUser = async (event: RequestEvent): Promise<TUser | null> => {
+  const getUser = async (event: RequestEvent): Promise<Aponia.User | null> => {
     const initialUser = (event.locals as any)[localsUserKey]
     if (initialUser) return initialUser
 
-    const accessToken = event.cookies.get(auth.session.config.cookies.accessToken.name)
+    const accessToken = event.cookies.get(auth.session.config.cookieOptions.accessToken.name)
 
-    const { access } = await auth.session.decodeTokens({ accessToken })
-    if (!access) return null
+    const { accessTokenData } = await auth.session.decodeTokens({ accessToken })
+    if (!accessTokenData) return null
 
-    const user = await auth.session.config.getUserFromSession(access)
+    const user = await auth.session.config.getAccessTokenUser(accessTokenData)
     if (!user) return null
 
     return user
   }
 
   const handle: Handle = async ({ event, resolve }) => {
+    const locals: any = event.locals
 
-    const internalResponse = await auth.handle(toInternalRequest(event) as TRequest)
+    const internalResponse = await auth.handle(toInternalRequest(event))
 
-      ; (event.locals as any)[localsUserKey] = internalResponse.user
-      ; (event.locals as any)[localsGetUserKey] = () => getUser(event)
+    locals[localsUserKey] = internalResponse.user
+    locals[localsGetUserKey] = () => getUser(event)
 
     internalResponse.cookies?.forEach((cookie) => {
       event.cookies.set(cookie.name, cookie.value, cookie.options)
@@ -88,7 +77,7 @@ export function createAuthHelpers<
     }
 
     if (options.debug) {
-      (event.locals as any)[localsAuthKey] = internalResponse
+      locals[localsAuthKey] = internalResponse
     }
 
     if (internalResponse.error) {
@@ -97,12 +86,14 @@ export function createAuthHelpers<
 
     if (internalResponse.body) {
       const response = json(internalResponse.body, internalResponse)
+
       internalResponse.cookies?.forEach((cookie) => {
         response.headers.append(
           'Set-Cookie',
           event.cookies.serialize(cookie.name, cookie.value, cookie.options)
         )
       })
+
       return response
     }
 

@@ -1,6 +1,6 @@
 {
-  "name": "@aponia/integrations-sveltekit",
-  "version": "0.1.51",
+  "name": "@aponia/sveltekit",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",

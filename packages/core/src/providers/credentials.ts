@@ -1,45 +1,42 @@
-import type { InternalRequest } from "../internal/request.js";
-import type { InternalResponse } from "../internal/response.js";
+import { defu } from 'defu'
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
 /**
  * Internal configuration for the credentials provider.
  */
-export interface CredentialsConfig<TUser, TRequest extends InternalRequest = InternalRequest> {
-  onLogin?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
-  onRegister?: (internalRequest: TRequest) => Awaitable<InternalResponse<TUser> | Nullish>
+export interface CredentialsConfig {
+  onLogin?: (internalRequest: Aponia.InternalRequest) => Awaitable<Aponia.InternalResponse | Nullish>
+  onRegister?: (internalRequest: Aponia.InternalRequest) => Awaitable<Aponia.InternalResponse | Nullish>
   pages: ProviderPages
 }
 
 /**
  * User configuration for the credentials provider.
  */
-export interface CredentialsUserConfig<TUser, TRequest extends InternalRequest = InternalRequest> 
-  extends DeepPartial<CredentialsConfig<TUser, TRequest>> {}
+export interface CredentialsUserConfig extends DeepPartial<CredentialsConfig> {}
 
 /**
  * Credentials provider.
  */
-export class CredentialsProvider<TUser, TRequest extends InternalRequest = InternalRequest> {
+export class CredentialsProvider {
   id = 'credentials' as const
 
-  config: CredentialsConfig<TUser, TRequest>
+  config: CredentialsConfig
 
-  constructor(config: CredentialsUserConfig<TUser, TRequest>) {
-    this.config = {
-      ...config,
+  constructor(config: CredentialsUserConfig) {
+    this.config = defu(config, {
       pages: {
         login: {
-          route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
-          methods: config.pages?.login?.methods ?? ['POST'],
+          route: `/auth/login/${this.id}`,
+          methods: ['POST'],
         },
         callback: {
-          route: config.pages?.callback?.route ?? `/auth/register/${this.id}`,
-          methods: config.pages?.callback?.methods ?? ['POST'],
-          redirect: config.pages?.callback?.redirect ?? '/',
+          route: `/auth/register/${this.id}`,
+          methods: ['POST'],
+          redirect: '/',
         }
       }
-    }
+    })
   }
 
   setJwtOptions() {
@@ -50,11 +47,11 @@ export class CredentialsProvider<TUser, TRequest extends InternalRequest = Inter
     return this
   }
 
-  async login(request: TRequest): Promise<InternalResponse<TUser>> {
+  async login(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     return (await this.config.onLogin?.(request)) ?? {}
   }
 
-  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
+  async callback(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     return (await this.config.onRegister?.(request)) ?? {}
   }
 }
@@ -62,6 +59,5 @@ export class CredentialsProvider<TUser, TRequest extends InternalRequest = Inter
 /**
  * Create a credentials provider.
  */
-export function Credentials<TUser>(config: CredentialsUserConfig<TUser>) {
-  return new CredentialsProvider(config)
-}
+export const Credentials = (config: CredentialsUserConfig) => new CredentialsProvider(config)
+

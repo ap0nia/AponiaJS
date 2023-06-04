@@ -1,49 +1,46 @@
+import { defu } from 'defu'
 import { randomString } from "../security/csrf.js";
-import type { InternalRequest } from "../internal/request.js";
-import type { InternalResponse } from "../internal/response.js";
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from "../types.js";
 
 /**
  * Internal configuration for the email provider.
  */
-export interface EmailConfig<TUser, TRequest extends InternalRequest = InternalRequest> {
+export interface EmailConfig {
   theme: any
   pages: ProviderPages
-  getEmail?: (request: TRequest) => Awaitable<string | Nullish>
-  onAuth?: (request: TRequest, args: any) => Awaitable<InternalResponse<TUser> | Nullish>
-  onVerify?: (request: TRequest, args: any) => Awaitable<InternalResponse<TUser> | Nullish>
+  getEmail?: (request: Aponia.InternalRequest) => Awaitable<string | Nullish>
+  onAuth?: (request: Aponia.InternalRequest, args: any) => Awaitable<Aponia.InternalResponse | Nullish>
+  onVerify?: (request: Aponia.InternalRequest, args: any) => Awaitable<Aponia.InternalResponse | Nullish>
 }
 
 /**
  * User configuration for the email provider.
  */
-export interface EmailUserConfig<TUser, TRequest extends InternalRequest = InternalRequest>
-  extends DeepPartial<EmailConfig<TUser, TRequest>> { }
+export interface EmailUserConfig extends DeepPartial<EmailConfig> { }
 
 /**
  * Email provider.
  */
-export class EmailProvider<TUser, TRequest extends InternalRequest = InternalRequest> {
+export class EmailProvider {
   id = 'email' as const
 
-  config: EmailConfig<TUser, TRequest>
+  config: EmailConfig
 
-  constructor(config: EmailUserConfig<TUser, TRequest>) {
-    this.config = {
-      ...config,
+  constructor(config: EmailUserConfig) {
+    this.config = defu(config, {
       theme: config.theme,
       pages: {
         login: {
-          route: config.pages?.login?.route ?? `/auth/login/${this.id}`,
-          methods: config.pages?.login?.methods ?? ['POST'],
+          route: `/auth/login/${this.id}`,
+          methods: ['POST'],
         },
         callback: {
-          route: config.pages?.callback?.route ?? `/auth/callback/${this.id}`,
-          methods: config.pages?.callback?.methods ?? ['GET'],
-          redirect: config.pages?.callback?.redirect ?? '/',
+          route: `/auth/callback/${this.id}`,
+          methods: ['GET'],
+          redirect: '/',
         }
       }
-    }
+    })
   }
 
   setJwtOptions() {
@@ -54,7 +51,7 @@ export class EmailProvider<TUser, TRequest extends InternalRequest = InternalReq
     return this
   }
 
-  async login(request: TRequest): Promise<InternalResponse<TUser>> {
+  async login(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     const email = await this.config.getEmail?.(request)
 
     // TODO: error
@@ -118,7 +115,7 @@ export class EmailProvider<TUser, TRequest extends InternalRequest = InternalReq
     return await (this.config.onAuth?.(request, { html, email, token, provider: this })) ?? {}
   }
 
-  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
+  async callback(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     const token = request.url.searchParams.get('token')
     const email = request.url.searchParams.get('email')
     return await (this.config.onVerify?.(request, { token, email })) ?? {}
@@ -128,8 +125,4 @@ export class EmailProvider<TUser, TRequest extends InternalRequest = InternalReq
 /**
  * Create a new email provider.
  */
-export function Email<TUser, TRequest extends InternalRequest = InternalRequest>(
-  config: EmailUserConfig<TUser, TRequest>
-) {
-  return new EmailProvider(config)
-}
+export const Email = (config: EmailUserConfig) => new EmailProvider(config)

@@ -1,5 +1,5 @@
 /**
- * Possibly asynchronous value.
+ * A possibly asynchronous value.
  */
 export type Awaitable<T> = PromiseLike<T> | T
 

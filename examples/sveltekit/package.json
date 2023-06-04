@@ -8,7 +8,7 @@
   "dependencies": {
     "@aponia/integrations-sveltekit": "*",
     "aponia": "*",
-    "aponia-v2": "workspace:^",
+    "aponia": "*",
     "better-sqlite3": "^8.3.0",
     "drizzle-orm": "^0.24.4"
   },

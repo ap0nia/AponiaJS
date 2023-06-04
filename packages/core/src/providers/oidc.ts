@@ -1,10 +1,9 @@
+import { defu } from 'defu'
 import * as oauth from 'oauth4webapi'
 import * as checks from '../security/checks.js'
+import type { JWTOptions } from '../security/jwt.js'
 import { createCookiesOptions } from '../security/cookie.js'
 import type { Cookie, CookiesOptions } from '../security/cookie.js'
-import type { JWTOptions } from '../security/jwt.js'
-import type { InternalRequest } from '../internal/request.js'
-import type { InternalResponse } from '../internal/response.js'
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from '../types.js'
 
 type OIDCCheck = 'pkce' | 'state' | 'none' | 'nonce'
@@ -20,7 +19,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 /**
  * Internal OIDC configuration.
  */
-export interface OIDCConfig<TProfile, TUser = TProfile> {
+export interface OIDCConfig<TProfile> {
   id: string
   issuer: string
   client: oauth.Client
@@ -31,21 +30,21 @@ export interface OIDCConfig<TProfile, TUser = TProfile> {
   checks: OIDCCheck[]
   pages: ProviderPages
   endpoints: {
-    authorization: Endpoint<OIDCProvider<TProfile, TUser>>
-    token: Endpoint<OIDCProvider<TProfile, TUser>, TokenSet>
-    userinfo: Endpoint<{ provider: OIDCProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
+    authorization: Endpoint<OIDCProvider<TProfile>>
+    token: Endpoint<OIDCProvider<TProfile>, TokenSet>
+    userinfo: Endpoint<{ provider: OIDCProvider<TProfile>; tokens: TokenSet }, TProfile>
   }
   onAuth: (
     user: TProfile,
-    context: OIDCProvider<TProfile, TUser>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
+    context: OIDCProvider<TProfile>,
+  ) => Awaitable<Aponia.InternalResponse | Nullish> | Nullish
 }
 
 /**
  * OIDC user configuration.
  */
-export interface OIDCUserConfig<TProfile, TUser = TProfile> extends 
-  DeepPartial<Omit<OIDCConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> {
+export interface OIDCUserConfig<TProfile> extends
+  DeepPartial<Omit<OIDCConfig<TProfile>, 'clientId' | 'clientSecret'>> {
   clientId: string
   clientSecret: string
   useSecureCookies?: boolean
@@ -54,19 +53,19 @@ export interface OIDCUserConfig<TProfile, TUser = TProfile> extends
 /**
  * Pre-defined OIDC default configuration.
  */
-export interface OIDCDefaultConfig<TProfile, TUser = TProfile> extends 
-  Pick<OIDCConfig<TProfile, TUser>, 'id' | 'issuer'>,
-  Omit<OIDCUserConfig<TProfile, TUser>, 'id' | 'issuer' | 'clientId' | 'clientSecret'> {}
+export interface OIDCDefaultConfig<TProfile> extends
+  Pick<OIDCConfig<TProfile>, 'id' | 'issuer'>,
+  Omit<OIDCUserConfig<TProfile>, 'id' | 'issuer' | 'clientId' | 'clientSecret'> { }
 
 /**
  * OIDC provider.
  */
-export class OIDCProvider<TProfile, TUser = TProfile, TRequest extends InternalRequest = InternalRequest> {
-  config: OIDCConfig<TProfile, TUser>
+export class OIDCProvider<TProfile> {
+  config: OIDCConfig<TProfile>
 
   authorizationServer: oauth.AuthorizationServer
 
-  constructor(options: OIDCConfig<TProfile, TUser>) {
+  constructor(options: OIDCConfig<TProfile>) {
     this.config = options
     this.authorizationServer = { issuer: options.issuer }
   }
@@ -103,7 +102,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TRequest extends InternalR
   /**
    * Handle OAuth login request.
    */
-  async login(request: TRequest): Promise<InternalResponse<TUser>> {
+  async login(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     await this.initialize()
 
     if (!this.authorizationServer.authorization_endpoint) {
@@ -153,7 +152,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TRequest extends InternalR
   /**
    * Handle OAuth callback request.
    */
-  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
+  async callback(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     await this.initialize()
 
     const cookies: Cookie[] = []
@@ -183,7 +182,7 @@ export class OIDCProvider<TProfile, TUser = TProfile, TRequest extends InternalR
       pkce,
     )
 
-    const codeGrantResponse = 
+    const codeGrantResponse =
       await this.config.endpoints?.token?.conform?.(initialCodeGrantResponse.clone())
       ?? initialCodeGrantResponse
 
@@ -229,45 +228,37 @@ export function mergeOIDCOptions(
   defaultOptions: OIDCDefaultConfig<any>,
 ): OIDCConfig<any> {
   const id = userOptions.id ?? defaultOptions.id
-
-  return {
-    ...userOptions,
-    ...defaultOptions,
+  return defu(defaultOptions, userOptions, {
     id,
     client: {
-      ...defaultOptions.client,
-      ...userOptions.client,
       client_id: userOptions.clientId,
       client_secret: userOptions.clientSecret,
     },
-    onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
-    checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
+    jwt: {
+      secret: ''
+    },
+    cookies: createCookiesOptions(userOptions.useSecureCookies),
+    checks: ['pkce'] as OIDCCheck[],
     pages: {
       login: {
-        route: userOptions.pages?.login?.route ?? `/auth/login/${id}`,
-        methods: userOptions.pages?.login?.methods ?? ['GET'],
+        route: `/auth/login/${id}`,
+        methods: ['GET'],
       },
       callback: {
-        route: userOptions.pages?.callback?.route ?? `/auth/callback/${id}`,
-        methods: userOptions.pages?.callback?.methods ?? ['GET'],
-        redirect: userOptions.pages?.callback?.redirect ?? '/',
+        route: `/auth/callback/${id}`,
+        methods: ['GET'],
+        redirect: '/',
       }
     },
-    endpoints: { 
+    endpoints: {
       authorization: {
-        ...defaultOptions.endpoints?.authorization,
-        ...userOptions.endpoints?.authorization,
         params: {
-          ...defaultOptions.endpoints?.authorization?.params,
-          ...userOptions.endpoints?.authorization?.params,
-          client_id: userOptions.clientId,
           response_type: 'code',
         }
       },
-      token: { ...defaultOptions.endpoints?.token, ...userOptions.endpoints?.token },
-      userinfo: { ...defaultOptions.endpoints?.userinfo, ...userOptions.endpoints?.userinfo }
+      token: {},
+      userinfo: {},
     },
-    jwt: { ...userOptions.jwt, secret: '' },
-    cookies: createCookiesOptions(userOptions.useSecureCookies),
-  }
+    onAuth: ((user: any) => ({ user, session: user })),
+  })
 }

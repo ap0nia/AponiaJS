@@ -1,37 +1,26 @@
-import { AponiaAuth, AponiaSession, Credentials, GitHub, Google } from 'aponia'
+import { AponiaAuth } from 'aponia'
+import { Credentials } from 'aponia/providers/credentials'
+import { GitHub } from 'aponia/providers/github'
+import { Google } from 'aponia/providers/google'
+import { AponiaSession } from 'aponia/session'
 import createAuthHandle from '@aponia/integrations-sveltekit'
 import { sequence } from '@sveltejs/kit/hooks'
 import type { Handle } from '@sveltejs/kit'
 import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private'
 
-type User = { id: number }
-
-import { x } from 'aponia-v2'
-
-x().augmented
-
-type AponiaSession = User
-
-type Refresh = User
-
-const auth = AponiaAuth<User, AponiaSession, Refresh>({
+const auth = AponiaAuth({
   session: AponiaSession({
     secret: 'secret',
     createSession: async (user) => {
       return { user, accessToken: user, refreshToken: user }
     },
-    handleRefresh: async (tokens) => {
-      if (tokens.accessToken) return
-      if (!tokens.refreshToken) return
-    },
-    onInvalidateSession: async (session) => {
-      console.log('invalidating session: ', session)
+    onInvalidateAccessToken(accessToken, refreshToken) {
     },
   }),
   providers: [
     Credentials({
-      onAuth: async ({ request }) => {
-        const formData = await request.formData()
+      async onLogin(internalRequest) {
+        const formData = await internalRequest.request.formData()
         const body = Object.fromEntries(formData.entries())
         return { body }
       },

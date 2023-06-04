@@ -1,19 +1,9 @@
-declare module "aponia-v2" {
-  interface InternalRequest {
-    augmented: true
-  }
-
-  interface InternalResponse {
-    augmented?: true
-  }
-}
+import 'aponia'
 
 declare global {
-  namespace AponiaAuth {
-    interface User {
-      augmented?: boolean
-    }
+  namespace Aponia {
   }
 }
 
-export {}
+
+export { }

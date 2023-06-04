@@ -2,7 +2,14 @@
   "name": "testing",
   "version": "0.1.0",
   "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts"
+  },
   "dependencies": {
-    "aponia-v2": "workspace:^"
+    "aponia": "*",
+    "lucia-auth": "^1.7.1"
+  },
+  "devDependencies": {
+    "tsx": "^3.12.7"
   }
 }

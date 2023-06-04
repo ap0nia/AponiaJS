@@ -1,10 +1,9 @@
+import { defu } from 'defu'
 import * as oauth from 'oauth4webapi'
 import * as checks from '../security/checks.js'
+import type { JWTOptions } from '../security/jwt.js'
 import { createCookiesOptions } from '../security/cookie.js'
 import type { Cookie, CookiesOptions } from '../security/cookie.js'
-import type { JWTOptions } from '../security/jwt.js'
-import type { InternalRequest } from '../internal/request.js'
-import type { InternalResponse } from '../internal/response.js'
 import type { Awaitable, DeepPartial, Nullish, ProviderPages } from '../types.js'
 
 type OAuthCheck = 'pkce' | 'state' | 'none' | 'nonce'
@@ -21,7 +20,7 @@ interface Endpoint<TContext = any, TResponse = any> {
 /**
  * Internal OAuth configuration.
  */
-export interface OAuthConfig<TProfile, TUser = TProfile> {
+export interface OAuthConfig<TProfile> {
   id: string
   clientId: string
   clientSecret: string
@@ -31,22 +30,21 @@ export interface OAuthConfig<TProfile, TUser = TProfile> {
   checks: OAuthCheck[]
   pages: ProviderPages
   endpoints: {
-    authorization: Endpoint<OAuthProvider<TProfile, TUser>>
-    token: Endpoint<OAuthProvider<TProfile, TUser>, TokenSet>
-    userinfo: Endpoint<{ provider: OAuthProvider<TProfile, TUser>; tokens: TokenSet }, TProfile>
+    authorization: Endpoint<OAuthProvider<TProfile>>
+    token: Endpoint<OAuthProvider<TProfile>, TokenSet>
+    userinfo: Endpoint<{ provider: OAuthProvider<TProfile>; tokens: TokenSet }, TProfile>
   }
   onAuth: (
     user: TProfile,
-    context: OAuthProvider<TProfile, TUser>,
-  ) => Awaitable<InternalResponse<TUser> | Nullish> | Nullish
+    context: OAuthProvider<TProfile>,
+  ) => Awaitable<Aponia.InternalResponse | Nullish> | Nullish
 }
 
 /**
  * OAuth user configuration.
  */
-export interface OAuthUserConfig<TProfile, TUser = TProfile> extends 
-  DeepPartial<Omit<OAuthConfig<TProfile, TUser>, 'clientId' | 'clientSecret'>> 
-{
+export interface OAuthUserConfig<TProfile> extends
+  DeepPartial<Omit<OAuthConfig<TProfile>, 'clientId' | 'clientSecret'>> {
   clientId: string
   clientSecret: string
   useSecureCookies?: boolean
@@ -55,19 +53,19 @@ export interface OAuthUserConfig<TProfile, TUser = TProfile> extends
 /**
  * Pre-defined OAuth default configuration.
  */
-export interface OAuthDefaultConfig<TProfile, TUser = TProfile> extends 
-  Pick<OAuthConfig<TProfile, TUser>, 'id' | 'endpoints'>,
-  Omit<OAuthUserConfig<TProfile, TUser>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> {}
+export interface OAuthDefaultConfig<TProfile> extends
+  Pick<OAuthConfig<TProfile>, 'id' | 'endpoints'>,
+  Omit<OAuthUserConfig<TProfile>, 'id' | 'endpoints' | 'clientId' | 'clientSecret'> { }
 
 /**
  * OAuth provider.
  */
-export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends InternalRequest = InternalRequest> {
-  config: OAuthConfig<TProfile, TUser>
+export class OAuthProvider<TProfile> {
+  config: OAuthConfig<TProfile>
 
   authorizationServer: oauth.AuthorizationServer
 
-  constructor(options: OAuthConfig<TProfile, TUser>) {
+  constructor(options: OAuthConfig<TProfile>) {
     this.config = options
 
     this.authorizationServer = {
@@ -91,7 +89,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends Internal
   /**
    * Handle OAuth login request.
    */
-  async login(request: TRequest): Promise<InternalResponse<TUser>> {
+  async login(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     const url = new URL(this.config.endpoints.authorization.url)
 
     const cookies: Cookie[] = []
@@ -133,7 +131,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends Internal
   /**
    * Handle OAuth callback request.
    */
-  async callback(request: TRequest): Promise<InternalResponse<TUser>> {
+  async callback(request: Aponia.InternalRequest): Promise<Aponia.InternalResponse> {
     const cookies: Cookie[] = []
 
     const [state, stateCookie] = await checks.state.use(request, this.config)
@@ -161,7 +159,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends Internal
       pkce
     )
 
-    const codeGrantResponse = 
+    const codeGrantResponse =
       await this.config.endpoints.token.conform?.(initialCodeGrantResponse.clone())
       ?? initialCodeGrantResponse
 
@@ -180,7 +178,7 @@ export class OAuthProvider<TProfile, TUser = TProfile, TRequest extends Internal
 
     if (oauth.isOAuth2Error(tokens)) throw new Error("TODO: Handle OAuth 2.0 response body error")
 
-    const profile = 
+    const profile =
       await (
         this.config.endpoints.userinfo.request?.({ provider: this, tokens }) ??
         oauth
@@ -211,44 +209,35 @@ export function mergeOAuthOptions(
 ): OAuthConfig<any> {
   const id = userOptions.id ?? defaultOptions.id
 
-  return {
-    ...userOptions,
-    ...defaultOptions,
+  return defu(defaultOptions, userOptions, {
     id,
     client: {
-      ...defaultOptions.client,
-      ...userOptions.client,
       client_id: userOptions.clientId,
       client_secret: userOptions.clientSecret,
     },
-    onAuth: userOptions.onAuth ?? ((user) => ({ user, session: user })),
-    checks: userOptions.checks ?? defaultOptions.checks ?? ['pkce'],
+    jwt: {
+      secret: ''
+    },
+    cookies: createCookiesOptions(userOptions.useSecureCookies),
+    checks: ['pkce'] as OAuthCheck[],
     pages: {
       login: {
-        route: userOptions.pages?.login?.route ?? `/auth/login/${id}`,
-        methods: userOptions.pages?.login?.methods ?? ['GET'],
+        route: `/auth/login/${id}`,
+        methods: ['GET'],
       },
       callback: {
-        route: userOptions.pages?.callback?.route ?? `/auth/callback/${id}`,
-        methods: userOptions.pages?.callback?.methods ?? ['GET'],
-        redirect: userOptions.pages?.callback?.redirect ?? '/',
+        route: `/auth/callback/${id}`,
+        methods: ['GET'],
+        redirect: '/',
       }
     },
-    endpoints: { 
+    endpoints: {
       authorization: {
-        ...defaultOptions.endpoints.authorization,
-        ...userOptions.endpoints?.authorization,
         params: {
-          ...defaultOptions.endpoints?.authorization?.params,
-          ...userOptions.endpoints?.authorization?.params,
-          client_id: userOptions.clientId,
           response_type: 'code',
         }
       },
-      token: { ...defaultOptions.endpoints.token, ...userOptions.endpoints?.token },
-      userinfo: { ...defaultOptions.endpoints.userinfo, ...userOptions.endpoints?.userinfo }
     },
-    jwt: { ...userOptions.jwt, secret: '' },
-    cookies: createCookiesOptions(userOptions.useSecureCookies),
-  }
+    onAuth: ((user: any) => ({ user, session: user })),
+  })
 }
