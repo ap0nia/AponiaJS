@@ -13,14 +13,12 @@ const DefaultAccessTokenMaxAge = hourInSeconds
 
 const DefaultRefreshTokenMaxAge = weekInSeconds
 
-
 /**
  * Ensure a possibly async value is a `Promise`.
  */
 function asPromise<T>(value: Awaitable<T>): Promise<T> {
   return value instanceof Promise ? value : Promise.resolve(value)
 }
-
 
 /**
  * Create a new session.
@@ -45,7 +43,6 @@ interface NewSession {
    */
   refreshToken?: AponiaAuth.RefreshToken
 }
-
 
 /**
  * Internal session configuration.
@@ -75,12 +72,10 @@ export interface SessionConfig {
   ) => Awaitable<AponiaAuth.InternalResponse | Nullish>
 }
 
-
 /**
  * Session user configuration.
  */
 export interface SessionUserConfig extends DeepPartial<Omit<SessionConfig, 'secret'>>, Required<Pick<SessionConfig, 'secret'>> { }
-
 
 /**
  * Session manager.
@@ -109,6 +104,9 @@ export class SessionManager {
     })
   }
 
+  /**
+   * Decode the JWT, encrypted access and refresh tokens.
+   */
   async decodeTokens(tokens: { accessToken?: string, refreshToken?: string }) {
     const accessTokenData = await asPromise(
       this.config.jwt.decode<AponiaAuth.AccessToken>({ secret: this.config.secret, token: tokens.accessToken })
@@ -125,6 +123,9 @@ export class SessionManager {
     return { accessTokenData, refreshTokenData }
   }
 
+  /**
+   * Create cookies from a new session.
+   */
   async createCookies(newSession: NewSession): Promise<Cookie[]> {
     const cookies: Cookie[] = []
 
@@ -185,9 +186,9 @@ export class SessionManager {
 
     if (!refreshTokenData) return {}
 
-    const refreshedTokens = await this.config.handleRefresh?.({ 
+    const refreshedTokens = await this.config.handleRefresh?.({
       accessToken: accessTokenData,
-      refreshToken: refreshTokenData 
+      refreshToken: refreshTokenData
     })
 
     return {
@@ -207,27 +208,27 @@ export class SessionManager {
 
     const { accessTokenData, refreshTokenData } = await this.decodeTokens({ accessToken, refreshToken })
 
-    const response = (accessTokenData && await this.config.onInvalidateAccessToken?.(accessTokenData, refreshTokenData)) || {
-      status: 302,
-      redirect: this.config.pages.logoutRedirect,
+    if (accessTokenData) {
+      const invalidationResponse = await this.config.onInvalidateAccessToken?.(accessTokenData, refreshTokenData) 
+      if (invalidationResponse) return invalidationResponse
     }
 
-    response.cookies ??= []
-
-    response.cookies.push(
-      {
-        name: this.config.cookieOptions.accessToken.name,
-        value: "",
-        options: { ...this.config.cookieOptions.accessToken.options, maxAge: 0, }
-      },
-      {
-        name: this.config.cookieOptions.accessToken.name,
-        value: "",
-        options: { ...this.config.cookieOptions.refreshToken.options, maxAge: 0, }
-      }
-    )
-
-    return response
+    return {
+      status: 302,
+      redirect: this.config.pages.logoutRedirect,
+      cookies: [
+        {
+          name: this.config.cookieOptions.accessToken.name,
+          value: "",
+          options: { ...this.config.cookieOptions.accessToken.options, maxAge: 0, }
+        },
+        {
+          name: this.config.cookieOptions.accessToken.name,
+          value: "",
+          options: { ...this.config.cookieOptions.refreshToken.options, maxAge: 0, }
+        }
+      ]
+    }
   }
 }
 

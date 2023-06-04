@@ -1,5 +1,10 @@
-export * from './internal/index.js'
-export * from './internal/request.js'
-export * from './internal/response.js'
+import { Awaitable, Nullish } from './types'
+
+export type Callback = (req: AponiaAuth.InternalRequest) => Awaitable<AponiaAuth.InternalResponse | Nullish>
+
+export const handle = async (callback: Callback) => {
+  return callback(undefined as any)
+}
+
 
 export * from './types.js'
