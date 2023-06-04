@@ -20,8 +20,8 @@ const config = {
       logo: { src: 'img/logo.png' }, 
       items: [
         {
-          to: '/svelte/setup',
-          label: 'Svelte',
+          to: '/',
+          label: 'Home',
           activeBaseRegex: 'docs(/?)$',
         },
         {
@@ -42,22 +42,14 @@ const config = {
           title: 'Docs',
           items: [
             {
-              label: 'Usage with Svelte',
+              label: 'Home',
               to: '/',
-            },
-            {
-              label: 'Usage with SvelteKit',
-              to: '/sveltekit/introduction',
             },
           ],
         },
         {
           title: 'More',
           items: [
-            {
-              label: 'Blog',
-              to: 'blog',
-            },
             {
               label: 'npm',
               href: 'https://www.npmjs.com/package/@bevm0/trpc-svelte-query',
