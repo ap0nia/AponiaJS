@@ -1,3 +1,5 @@
+// This is an ambient declaration file, so it can't do any exports. Or something.
+
 declare namespace Aponia {
   /**
    * The user that can be __identified__ by a session.
