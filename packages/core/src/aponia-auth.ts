@@ -6,7 +6,7 @@ declare namespace Aponia {
    *
    * @example username, email, profile picture, etc.
    */
-  interface User { id: number }
+  interface User { }
 
   /**
    * The data stored in a JWT, encrypted access token, and then into a cookie.
