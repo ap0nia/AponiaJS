@@ -1,19 +1,23 @@
-<div>
-  <a href="/auth/login/google">Google Login</a>
-</div>
-<div>
-  <a href="/auth/login/github">GitHub login</a>
-</div>
-<div>
-  <a href="/auth/login">Credentials Login</a>
-</div>
-<div>
-  <a href="/auth/session">Get Session</a>
-</div>
-<div>
-  <a href="/auth/logout">Logout</a>
-</div>
-<div>
-  <a href="/">Home</a>
-</div>
+<script lang="ts">
+  import type { PageData } from "./$types";
+
+  export let data: PageData;
+</script>
+
+{#if data.user?.name}
+  <div>
+    <p>Logged in as {data.user?.name}</p>
+  </div>
+  <form action="/auth/logout" method="POST">
+    <button>Logout</button>
+  </form>
+{:else}
+  <div>
+    <p>Not logged in</p>
+  </div>
+  <div>
+    <a href="/auth/login/google">Login with Google</a>
+  </div>
+{/if}
+
 <slot />
