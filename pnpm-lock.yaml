@@ -80,10 +80,10 @@ importers:
   examples/sveltekit:
     dependencies:
       '@aponia/sveltekit':
-        specifier: '*'
+        specifier: latest
         version: link:../../packages/sveltekit-integration
       aponia:
-        specifier: '*'
+        specifier: latest
         version: 1.0.2
     devDependencies:
       '@sveltejs/adapter-vercel':

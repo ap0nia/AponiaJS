@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aponia/sveltekit": "*",
-    "aponia": "*"
+    "@aponia/sveltekit": "latest",
+    "aponia": "latest"
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^3.0.1",
