@@ -7,7 +7,6 @@ const config = {
   favicon: '/favicon.ico',
   projectName: 'aponia-auth',
   themeConfig: {
-    disableSwitch: false,
     respectPrefersColorScheme: true,
     prism: {
       darkTheme: require('prism-react-renderer/themes/nightOwl'),
@@ -15,7 +14,7 @@ const config = {
     },
     navbar: {
       title: 'tRPC + svelte',
-      logo: { src: '/logo.png' }, 
+      logo: { src: '/logo.png' },
       items: [
         {
           to: '/',
@@ -23,14 +22,19 @@ const config = {
           activeBaseRegex: '/$',
         },
         {
-          href: 'https://github.com/bevm0/trpc-svelte-toolbox.git',
+          href: 'https://www.npmjs.com/package/aponia',
+          label: 'npm',
+          position: 'right',
+        },
+        {
+          href: 'https://github.com/ap0nia/AponiaJS',
           label: 'GitHub',
           position: 'right',
         },
       ],
     },
     footer: {
-       links: [
+      links: [
         {
           title: 'Docs',
           items: [
@@ -44,8 +48,13 @@ const config = {
           title: 'More',
           items: [
             {
+              label: 'npm',
+              href: 'https://www.npmjs.com/package/aponia',
+              className: 'flex items-center',
+            },
+            {
               label: 'GitHub',
-              href: 'https://github.com/bevm0/trpc-svelte-toolbox.git',
+              href: 'https://github.com/ap0nia/AponiaJS',
               className: 'flex items-center',
             },
           ],
@@ -57,6 +66,7 @@ const config = {
     [
       '@docusaurus/preset-classic',
       {
+        /** @type {import('@docusaurus/preset-classic').Options['docs'] } */
         docs: {
           routeBasePath: '/',
         },

@@ -1,40 +1,46 @@
 ---
 id: introduction
 title: Aponia Auth
-sidebar_label: Getting Started
+sidebar_position: 0
+sidebar_label: Introduction
 description: How to use the authentication framework.
 slug: /
 ---
 
-import TabItem from '@theme/TabItem';
-import Tabs from '@theme/Tabs';
+## About Aponia Auth
 
-### 1. Install dependencies
+Aponia Auth is a complete open-source authentication solution for web applications.
+Check out the live demos of Aponia Auth in action:
 
-The following dependencies should be installed:
+- [SvelteKit](https://sveltekit-auth-example.vercel.app/)
+- [Express](https://sveltekit-auth-example.vercel.app/)
 
-<Tabs>
-  <TabItem value="npm" label="npm" default>
+Continue to our tutorials to see how to use Auth.js for authentication:
 
-```bash
-npm install aponia
-```
+- [Setup with OAuth](/getting-started/oauth)
 
-  </TabItem>
+### Batteries included
 
-  <TabItem value="yarn" label="yarn">
+- Built in support for 60+ popular services (Google, Facebook, Auth0, Apple…)
+- Built-in email/password-less/magic link
+- Use with any OAuth 2 or OpenID Connect provider
+- Use with any username/password store
 
-```bash
-yarn add aponia
-```
+### Flexible
+- Runtime agnostic - run anywhere! Vercel Edge Functions, Node.js, Serverless, etc.
+- Use with any modern framework! Next.js, SolidStart, SvelteKit, etc.
+- [Bring Your Own Database](/getting-started/databases) - or none! MySQL, Postgres, MSSQL, MongoDB, etc. Choose database sessions or JWT.
 
-  </TabItem>
+_Note: Email sign-in requires a database to store single-use verification tokens._
 
-  <TabItem value="pnpm" label="pnpm">
+### Secure by default
+- Signed, prefixed, server-only cookies
+- Built-in CSRF protection
+- Doesn't rely on client-side JavaScript
+- JWT with JWS / JWE / JWK.
 
-```bash
-pnpm add aponia
-```
+## Credits
 
-  </TabItem>
-</Tabs>
+Auth.js is an open-source project that is only possible [thanks to contributors](/contributors).
+
+To financially support the development of Auth.js, you can check our [OpenCollective](https://opencollective.com/nextauth) page. We appreciate your support 💚.
