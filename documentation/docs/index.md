@@ -12,8 +12,8 @@ slug: /
 Aponia Auth is a complete open-source authentication solution for web applications.
 Check out the live demos of Aponia Auth in action:
 
-- [SvelteKit](https://sveltekit-auth-example.vercel.app/)
-- [Express](https://sveltekit-auth-example.vercel.app/)
+- [SvelteKit](https://aponia-sveltekit-example.vercel.app)
+- [Express](https://sveltekit-auth-example.vercel.app)
 
 Continue to our tutorials to see how to use Auth.js for authentication:
 
