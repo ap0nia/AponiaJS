@@ -1,10 +1,8 @@
-// @ts-check
-
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Aponia Auth',
   tagline: 'Documentation for Aponia Auth',
-  url: 'https://trpc-svelte-toolbox.vercel.app',
+  url: 'https://aponia-js.vercel.app',
   baseUrl: '/',
   favicon: 'img/favicon.ico',
   projectName: 'aponia-auth',
@@ -22,12 +20,7 @@ const config = {
         {
           to: '/',
           label: 'Home',
-          activeBaseRegex: 'docs(/?)$',
-        },
-        {
-          label: 'npm',
-          href: 'https://www.npmjs.com/package/@bevm0/trpc-svelte-query',
-          position: 'right',
+          activeBaseRegex: '/$',
         },
         {
           href: 'https://github.com/bevm0/trpc-svelte-toolbox.git',
@@ -51,10 +44,6 @@ const config = {
           title: 'More',
           items: [
             {
-              label: 'npm',
-              href: 'https://www.npmjs.com/package/@bevm0/trpc-svelte-query',
-            },
-            {
               label: 'GitHub',
               href: 'https://github.com/bevm0/trpc-svelte-toolbox.git',
               className: 'flex items-center',
@@ -69,7 +58,6 @@ const config = {
       '@docusaurus/preset-classic',
       {
         docs: {
-          sidebarPath: require.resolve('./sidebars.js'),
           routeBasePath: '/',
         },
       },
