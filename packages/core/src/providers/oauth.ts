@@ -209,7 +209,7 @@ export function mergeOAuthOptions(
 ): OAuthConfig<any> {
   const id = userOptions.id ?? defaultOptions.id
 
-  return defu(defaultOptions, userOptions, {
+  return defu(userOptions, {
     id,
     client: {
       client_id: userOptions.clientId,
@@ -239,5 +239,5 @@ export function mergeOAuthOptions(
       },
     },
     onAuth: ((user: any) => ({ user, session: user })),
-  })
+  }, defaultOptions)
 }

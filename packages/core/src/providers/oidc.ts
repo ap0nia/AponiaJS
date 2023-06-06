@@ -228,7 +228,7 @@ export function mergeOIDCOptions(
   defaultOptions: OIDCDefaultConfig<any>,
 ): OIDCConfig<any> {
   const id = userOptions.id ?? defaultOptions.id
-  return defu(defaultOptions, userOptions, {
+  return defu(userOptions, {
     id,
     client: {
       client_id: userOptions.clientId,
@@ -260,5 +260,5 @@ export function mergeOIDCOptions(
       userinfo: {},
     },
     onAuth: ((user: any) => ({ user, session: user })),
-  })
+  }, defaultOptions)
 }
