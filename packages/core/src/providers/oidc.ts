@@ -253,6 +253,7 @@ export function mergeOIDCOptions(
     endpoints: {
       authorization: {
         params: {
+          client_id: userOptions.clientId,
           response_type: 'code',
         }
       },
