@@ -1,6 +1,6 @@
 {
   "name": "@examples/sveltekit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "prepare": "svelte-kit sync",
