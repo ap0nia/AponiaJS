@@ -211,27 +211,31 @@ export class SessionManager {
 
     const { accessTokenData, refreshTokenData } = await this.decodeTokens({ accessToken, refreshToken })
 
+    let response: Aponia.InternalResponse = {}
+
     if (accessTokenData) {
-      const invalidationResponse = await this.config.onInvalidateAccessToken?.(accessTokenData, refreshTokenData) 
-      if (invalidationResponse) return invalidationResponse
+      const invalidateResponse = await this.config.onInvalidateAccessToken?.(accessTokenData, refreshTokenData)
+      if (invalidateResponse) {
+        response = invalidateResponse
+      }
     }
 
-    return {
-      status: 302,
-      redirect: this.config.pages.logoutRedirect,
-      cookies: [
-        {
-          name: this.config.cookieOptions.accessToken.name,
-          value: "",
-          options: { ...this.config.cookieOptions.accessToken.options, maxAge: 0, }
-        },
-        {
-          name: this.config.cookieOptions.accessToken.name,
-          value: "",
-          options: { ...this.config.cookieOptions.refreshToken.options, maxAge: 0, }
-        }
-      ]
-    }
+    response.status ??= 302
+    response.redirect ??= this.config.pages.logoutRedirect
+    response.cookies ??= [
+      {
+        name: this.config.cookieOptions.accessToken.name,
+        value: "",
+        options: { ...this.config.cookieOptions.accessToken.options, maxAge: 0, }
+      },
+      {
+        name: this.config.cookieOptions.accessToken.name,
+        value: "",
+        options: { ...this.config.cookieOptions.refreshToken.options, maxAge: 0, }
+      }
+    ]
+
+    return response
   }
 }
 
