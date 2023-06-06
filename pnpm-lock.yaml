@@ -80,10 +80,10 @@ importers:
   examples/sveltekit:
     dependencies:
       '@aponia/sveltekit':
-        specifier: latest
+        specifier: '*'
         version: link:../../packages/sveltekit
       aponia:
-        specifier: latest
+        specifier: '*'
         version: 1.0.2
     devDependencies:
       '@sveltejs/adapter-node':
