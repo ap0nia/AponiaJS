@@ -229,7 +229,7 @@ export class SessionManager {
         options: { ...this.config.cookieOptions.accessToken.options, maxAge: 0, }
       },
       {
-        name: this.config.cookieOptions.accessToken.name,
+        name: this.config.cookieOptions.refreshToken.name,
         value: "",
         options: { ...this.config.cookieOptions.refreshToken.options, maxAge: 0, }
       }
