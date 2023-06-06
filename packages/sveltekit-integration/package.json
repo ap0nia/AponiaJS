@@ -1,6 +1,6 @@
 {
   "name": "@aponia/sveltekit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc",
@@ -15,6 +15,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     }
   },
@@ -36,6 +37,7 @@
     "@types/node": "^18.15.11",
     "rimraf": "^5.0.0",
     "svelte": "^3.58.0",
+    "tsup": "^6.7.0",
     "typescript": "^5.0.4",
     "vite": "^4.2.1"
   }
