@@ -1,6 +1,6 @@
 {
   "name": "@aponia/sveltekit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "build": "rimraf dist && tsup",
@@ -10,8 +10,8 @@
     "src",
     "dist"
   ],
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
