@@ -4,7 +4,7 @@ const config = {
   tagline: 'Documentation for Aponia Auth',
   url: 'https://aponia-js.vercel.app',
   baseUrl: '/',
-  favicon: 'img/favicon.ico',
+  favicon: '/favicon.ico',
   projectName: 'aponia-auth',
   themeConfig: {
     disableSwitch: false,
@@ -15,7 +15,7 @@ const config = {
     },
     navbar: {
       title: 'tRPC + svelte',
-      logo: { src: 'img/logo.png' }, 
+      logo: { src: '/logo.png' }, 
       items: [
         {
           to: '/',

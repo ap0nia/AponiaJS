@@ -26,6 +26,11 @@
     "@tsconfig/docusaurus": "^1.0.6",
     "typescript": "^5.0.4"
   },
+  "babel": {
+    "presets": [
+      "@docusaurus/core/lib/babel/preset"
+    ]
+  },
   "packageManager": "pnpm@8.6.0",
   "engines": {
     "pnpm": "^8.0.0",
