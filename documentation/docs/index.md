@@ -38,9 +38,3 @@ _Note: Email sign-in requires a database to store single-use verification tokens
 - Built-in CSRF protection
 - Doesn't rely on client-side JavaScript
 - JWT with JWS / JWE / JWK.
-
-## Credits
-
-Auth.js is an open-source project that is only possible [thanks to contributors](/contributors).
-
-To financially support the development of Auth.js, you can check our [OpenCollective](https://opencollective.com/nextauth) page. We appreciate your support 💚.
