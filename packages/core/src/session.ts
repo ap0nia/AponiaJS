@@ -44,6 +44,11 @@ interface NewSession {
   refreshToken?: Aponia.RefreshToken
 }
 
+interface OldSession {
+  accessToken?: Aponia.AccessToken | Nullish
+  refreshToken?: Aponia.RefreshToken
+}
+
 /**
  * Internal session configuration.
  */
@@ -64,7 +69,7 @@ export interface SessionConfig {
 
   getAccessTokenUser: (session: Aponia.AccessToken) => Awaitable<Aponia.User | Nullish>;
 
-  handleRefresh?: (refreshToken: Aponia.RefreshToken) => Awaitable<NewSession | Nullish>;
+  handleRefresh?: (tokens: OldSession) => Awaitable<NewSession | Nullish>;
 
   onInvalidateAccessToken?: (
     accessToken: Aponia.AccessToken,
