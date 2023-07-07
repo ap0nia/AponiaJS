@@ -36,7 +36,7 @@ export interface OAuthConfig<TProfile> {
   }
   onAuth: (
     user: TProfile,
-    context: OAuthProvider<TProfile>,
+    tokens: oauth.OAuth2TokenEndpointResponse
   ) => Awaitable<Aponia.InternalResponse | Nullish> | Nullish
 }
 
@@ -188,7 +188,7 @@ export class OAuthProvider<TProfile> {
 
     if (!profile) throw new Error("TODO: Handle missing profile")
 
-    const processedResponse = (await this.config.onAuth(profile, this)) ?? {
+    const processedResponse = (await this.config.onAuth(profile, tokens)) ?? {
       redirect: this.config.pages.callback.redirect,
       status: 302,
     }

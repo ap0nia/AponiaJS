@@ -36,7 +36,7 @@ export interface OIDCConfig<TProfile> {
   }
   onAuth: (
     user: TProfile,
-    context: OIDCProvider<TProfile>,
+    tokens: oauth.OpenIDTokenEndpointResponse
   ) => Awaitable<Aponia.InternalResponse | Nullish> | Nullish
 }
 
@@ -197,18 +197,18 @@ export class OIDCProvider<TProfile> {
 
     if (nonceCookie) cookies.push(nonceCookie)
 
-    const result = await oauth.processAuthorizationCodeOpenIDResponse(
+    const tokens = await oauth.processAuthorizationCodeOpenIDResponse(
       this.authorizationServer,
       this.config.client,
       codeGrantResponse,
       nonce,
     )
 
-    if (oauth.isOAuth2Error(result)) throw new Error("TODO: Handle OIDC response body error")
+    if (oauth.isOAuth2Error(tokens)) throw new Error("TODO: Handle OIDC response body error")
 
-    const profile = oauth.getValidatedIdTokenClaims(result) as TProfile
+    const profile = oauth.getValidatedIdTokenClaims(tokens) as TProfile
 
-    const processedResponse = (await this.config.onAuth(profile, this)) ?? {
+    const processedResponse = (await this.config.onAuth(profile, tokens)) ?? {
       redirect: this.config.pages.callback.redirect,
       status: 302,
     }
